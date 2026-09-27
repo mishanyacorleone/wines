@@ -1,0 +1,5 @@
+-r ../../libs/wine-embeddings/requirements.txt
+qdrant-client==1.12.2
+tqdm==4.67.1
+# чтение .env при запуске
+python-dotenv==1.2.3
