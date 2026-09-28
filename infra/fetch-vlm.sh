@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Веса VLM-реранкера Qwen3-VL-4B-Instruct (8,9 ГБ) → models/Qwen3-VL-4B-Instruct.
-# Нужны только при WINE_VLM_ENABLED=1. Качаются тем же curl с докачкой, что и энкодер.
+# Качаются тем же curl с докачкой, что и энкодер.
 set -euo pipefail
 exec "$(dirname "${BASH_SOURCE[0]}")/fetch-model.sh" Qwen/Qwen3-VL-4B-Instruct \
   config.json generation_config.json chat_template.json \

@@ -25,6 +25,138 @@
 Контекст задачи, данные и набитые шишки → [`CLAUDE.md`](CLAUDE.md).
 Замеры и разбор ошибок → [`docs/baseline-results.md`](docs/baseline-results.md).
 
+## Запуск для проверки (Docker)
+
+Всё работает в контейнерах: Qdrant, API с веб-сканером, парсер каталога,
+индексатор. Модели и каталог скачиваются на вашей машине, индекс тоже строится
+у вас. Одна команда делает всё с нуля.
+
+### Что нужно на машине
+
+| | |
+|---|---|
+| ОС | Linux x86_64 (проверено на Ubuntu) |
+| GPU | NVIDIA, **от 12 ГБ видеопамяти** (сервис занимает ~10,3 ГБ, лимит в коде — 14 ГБ); проверено на RTX 3090 |
+| ПО | Docker с Compose v2 (`docker compose version`), [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), `bash`, `curl`, `jq`, `git` |
+| Диск | ~25 ГБ: веса моделей 13 ГБ, образы ~8 ГБ, фото каталога 1 ГБ |
+| Сеть | huggingface.co (веса), vino-svoe.ru (каталог), Docker Hub и PyPI (сборка образов) |
+| Порты | 8080 (сервис, контракт оценки), 6333 на localhost (Qdrant) |
+
+Проверить, что Docker видит GPU:
+
+```bash
+docker run --rm --gpus all ubuntu nvidia-smi
+```
+
+### Первый запуск
+
+```bash
+git clone <репозиторий> wines && cd wines
+./infra/init.sh
+```
+
+`init.sh` выполняет шесть шагов. Если скрипт прервался, запустите его снова:
+то, что уже скачано и построено, он пропустит.
+
+| Шаг | Что происходит | Время |
+|---|---|---|
+| 1. Модели | `google/siglip2-so400m-patch16-512` (4,3 ГБ) и `Qwen/Qwen3-VL-4B-Instruct` (8,9 ГБ) → `models/`, с докачкой | зависит от канала |
+| 2. Образы | `docker compose --profile init build`: api, indexer, scraper | 5–15 минут |
+| 3. Каталог | парсер обходит vino-svoe.ru и сохраняет фото и карточки ~2100 вин в `data/catalog/`; пауза между запросами, чтобы не нагружать сайт | 35–40 минут |
+| 4. Индекс | эмбеддинги SigLIP 2 для всех фото каталога → Qdrant (коллекция `wines`, dim 1152, косинус) | ~4 минуты |
+| 5. Сервис | загрузка моделей в видеопамять, прогрев, кэш уменьшенных эталонов для VLM | 1–2 минуты |
+| 6. Смоук-тесты | `infra/smoke.sh`, см. ниже | ~20 секунд |
+
+В конце скрипт печатает адреса:
+
+- сканер для телефона: `http://<IP машины>:8080/app/`;
+- контракт оценки: `POST http://127.0.0.1:8080/v1/eval/predict`;
+- документация API: `http://127.0.0.1:8080/docs`.
+
+Дальше сервис поднимается одной командой:
+
+```bash
+docker compose up -d          # Qdrant + API; после перезагрузки машины стартуют сами
+docker compose ps             # оба сервиса должны быть healthy
+docker compose logs -f api    # лог сервиса
+docker compose down           # остановить
+```
+
+Каталог на сайте пополняется. Чтобы подтянуть новые вина, запустите парсер
+ещё раз: он скачает только недостающее. Затем пересчитайте индекс:
+
+```bash
+docker compose run --rm scraper
+docker compose run --rm indexer --recreate
+docker compose restart api
+```
+
+### Смоук-тесты
+
+```bash
+./infra/smoke.sh                               # сервис на 127.0.0.1:8080
+./infra/smoke.sh --queries ./eval/queries      # плюс каждое фото из папки
+./infra/smoke.sh --url http://<хост>:8080 --samples 5
+```
+
+Что проверяется:
+
+- `/health` отвечает, число вин в индексе совпадает с `data/catalog/catalog.jsonl`,
+  Qdrant в статусе `green`;
+- **контракт `/v1/eval/predict`**: ответ ровно `{"slug": "<строка>"}` или
+  `{"slug": null}`, время ответа меньше 3 секунд. Фото из каталога должно вернуть
+  свой же slug. В каталоге есть вина с одинаковым фото, для них подходит любой
+  slug из группы;
+- не картинка → 4xx, сервис при этом не падает;
+- `/v1/search` (топ-1 + топ-10), `/v1/scan` (карточка + советы сомелье),
+  `/v1/wines/{slug}`, `/v1/pairing/dishes`, `/v1/catalog/search`;
+- веб-сканер `/app/` отдаётся.
+
+Скрипт возвращает код 0, если все проверки прошли; это удобно для CI.
+Пример вывода:
+
+```
+Контракт POST /v1/eval/predict
+  OK    фото каталога → свой slug (gunko-winery-risling-rezerv-beloe-suhoe-135, 571 мс)
+  OK    не картинка → HTTP 400, сервис не падает
+...
+Скорость /v1/eval/predict
+  8 запросов: среднее 1047 мс, max 1491 мс (SLA 3000 мс)
+
+Итого: 18 прошло, 0 не прошло
+```
+
+### Прогон скрипта оценки организатора
+
+Скрипт из `eval.zip` работает с сервисом без изменений:
+
+```bash
+mkdir -p eval && unzip -o "data/Датасет (1)/eval.zip" -x '__MACOSX/*' -d eval
+cd eval && rm -f predictions.jsonl
+bash participant_test.sh --images-dir ./queries --manifest ./queries.tsv \
+  --endpoint 'http://127.0.0.1:8080/v1/eval/predict' --output ./predictions.jsonl
+```
+
+На трёх фото из архива ответ приходит за 1,4–1,5 с. Если вина нет в каталоге,
+сервис отвечает `{"slug": null}`, и скрипт записывает его как `predicted_slug: null`.
+Это сделано намеренно: см. «Ограничения».
+
+### Если что-то не так
+
+| Симптом | Причина и решение |
+|---|---|
+| `failed to bind host port ... 6333` или `8080: address already in use` | Порт уже занят, например Qdrant или сервисом, запущенным без Docker. Найти процесс: `ss -ltnp \| grep -E ':6333\|:8080'`. Порт сервиса можно сменить: `WINE_API_PORT=8081 docker compose up -d` |
+| `could not select device driver "nvidia"` | Не установлен NVIDIA Container Toolkit или Docker не перезапущен после установки (`sudo systemctl restart docker`) |
+| API долго в статусе `starting` | При первом старте модели загружаются в видеопамять и строится кэш эталонов, это до 2 минут. Ход загрузки видно в `docker compose logs -f api` |
+| CUDA out of memory | На GPU работает что-то ещё. Сервису нужно ~10,3 ГБ. Без VLM ему хватает ~1,2 ГБ, но точность падает до 77% (`WINE_VLM_ENABLED=0` в `.env`, затем `docker compose up -d api`) |
+| В логе API при первом старте `Temporary failure in name resolution` | API стартовал раньше Qdrant. Он перезапустится сам (`restart: unless-stopped`) |
+| Выход в интернет только через прокси | Задайте `HTTP_PROXY`/`HTTPS_PROXY` и `no_proxy=127.0.0.1,localhost` в окружении перед `init.sh`. Эти переменные получают curl при скачивании весов и парсер (он работает в сети хоста). Для `pip install` при сборке образов прокси задаётся в `~/.docker/config.json` (раздел `proxies`, [документация Docker](https://docs.docker.com/engine/cli/proxy/)). API и индексатору интернет не нужен |
+| Смоук-тест: «в индексе N точек, в каталоге M вин» | Каталог дополнили, а индекс не пересчитали: `docker compose run --rm indexer --recreate`, затем `docker compose restart api` |
+
+Все настройки задаются в `.env` (создаётся из `.env.example` при первом запуске),
+полный список — в разделе «Переменные окружения». В контейнере адрес Qdrant
+и прослушивание `0.0.0.0` задаёт compose, `.env` их не перекрывает.
+
 ## Структура
 
 ```
@@ -36,7 +168,10 @@ services/search-api/        FastAPI: /v1/eval/predict (контракт орга
 tools/eval-runner/          прогон фото через API → HTML-отчёт, точность, Excel
 tools/web-demo/             демо-ответы API для вёрстки без GPU
 tools/site-media/           фото блюд, регионов и сортов с сайта для карточки
-infra/                      Qdrant, скрипты загрузки весов
+infra/                      init.sh (первый запуск), smoke.sh (смоук-тесты), загрузка весов,
+                            run-qdrant.sh (Qdrant без Docker)
+docker-compose.yml          qdrant + api; scraper, indexer — профиль init
+services/*/Dockerfile       образ на сервис, только его зависимости
 docs/                       данные, парсер, результаты, план, журнал изменений;
                             docs/history/ — исходный план и этапы, которые уже не актуальны
 data/                       ТЗ, датасет организатора, разметка, каталог (метаданные), отчёты
@@ -56,7 +191,14 @@ data/                       ТЗ, датасет организатора, ра�
 | `data/Датасет (1)/Реальные фото.zip`, `data/real-photos/` | 94 МБ | архив организатора; распаковать в `data/real-photos/` |
 | `data/qdrant/` | — | строится индексатором (шаг 3) |
 
-## Сетап
+## Разработка без Docker
+
+То же самое можно запустить из виртуального окружения. Так удобнее
+отлаживать код и гонять оценку. Перед этим остановите контейнеры
+(`docker compose down`): они занимают те же порты 6333 и 8080. Хранилище
+Qdrant (`data/qdrant/storage`) у обоих способов общее.
+
+### Сетап
 
 Python 3.12, CUDA-GPU (проверено на RTX 3090; процессу отводится не более 14 ГБ VRAM).
 
@@ -84,11 +226,11 @@ cp .env.example .env              # и поправить под себя
 процессору Qwen3-VL): свежий torchvision поднимает torch до версии с CUDA 13
 и ломает стек.
 
-## Запуск
+### Запуск
 
 ```bash
 # 1. Векторная база
-./infra/run-qdrant.sh                      # либо: docker compose -f infra/docker-compose.yml up -d
+./infra/run-qdrant.sh                      # либо: docker compose up -d qdrant
 
 # 2. Сбор каталога (~2100 вин, 35–40 минут)
 PYTHONPATH=services/catalog-scraper/src .venv/bin/python -m catalog_scraper
@@ -252,8 +394,9 @@ OCR (EasyOCR) из пайплайна удалён 28.09.2026: с VLM он не 
 - **71 slug из CSV-дампа отсутствует на сайте** (страницы отдают 404), фото для
   них взять неоткуда. Если закрытая таблица ответов построена по дампу, эти вина
   недостижимы.
-- **Docker Hub недоступен из сети разработки** — Qdrant запускается нативным
-  бинарником (`infra/run-qdrant.sh`), `docker-compose.yml` оставлен для среды,
-  где registry доступен.
+- **Docker Hub из сети разработки нестабилен** (503, обрывы на CDN), поэтому
+  для отладки есть запасной путь без Docker: нативный Qdrant
+  (`infra/run-qdrant.sh`) той же версии и с тем же хранилищем. Стек в Docker
+  проверен 28.09: 100 реальных фото дали те же ответы, что и без Docker.
 - **Трафик идёт через прокси**, который рвёт длинные соединения: веса скачиваются
   скриптами с докачкой, а localhost исключается из проксирования в рантайме.

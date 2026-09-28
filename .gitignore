@@ -24,6 +24,8 @@ data/feedback/
 # пересобираются eval_runner; в репозитории остаются results.jsonl и accuracy.xlsx
 data/reports/**/report.html
 data/reports/**/thumbs/
+# eval.zip, распакованный по инструкции README, и ответы скрипта организатора
+eval/
 
 # Самописная разметка — не используется, заменена Label Studio
 tools/labeler/
