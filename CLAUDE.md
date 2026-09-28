@@ -75,9 +75,12 @@ data/
 libs/wine-embeddings/       общий энкодер: модель, нормализация, лимит VRAM
 services/catalog-scraper/   сбор каталога с vino-svoe.ru  → data/catalog/
 services/indexer/           каталог → векторы → Qdrant
-services/search-api/        FastAPI: /v1/search (топ-k) + /v1/eval/predict;
+services/search-api/        FastAPI: /v1/search (топ-k) + /v1/eval/predict + /v1/scan (сканер);
                             search.py — поиск и переранжирование, ocr.py + text_match.py — OCR,
-                            vlm.py — VLM-реранкер
+                            vlm.py — VLM-реранкер, verdict.py — «одна карточка или варианты»,
+                            sommelier.py — советы и похожие вина, web/ — мобильный интерфейс (/app/)
+tools/web-demo/             демо-ответы API для вёрстки без GPU (web/demo/)
+tools/site-media/           фото блюд/регионов/сортов с сайта → search_api/site_media.json
 tools/eval-runner/          прогон фото через API → HTML-отчёт; score.py — точность,
                             excel.py — accuracy.xlsx, labels.py — импорт разметки,
                             vlm_offline.py — VLM на готовом прогоне без сервиса
@@ -140,9 +143,11 @@ models/                     веса: SigLIP 4,3 ГБ, EasyOCR 94 МБ, Qwen3-VL
 - [x] Подготовка к GitHub: `.gitignore`, README с восстановлением тяжёлых файлов, `.env`
 - [ ] Сервис на `:8080` перезапустить на текущем коде (там всё ещё код до OCR)
 - [ ] Геометрическая верификация — неактуально после VLM
-- [ ] Мобильный интерфейс карточки (10 баллов из 100)
-- [ ] Функция после поиска: «цифровой сомелье» или подбор аналогов (20 баллов из 100)
-- [ ] Обработка случая «вина нет в каталоге» (оценивается особо)
+- [x] Мобильный интерфейс карточки в стилистике vino-svoe.ru — `/app/` (статика в `search_api/web`)
+- [x] «Цифровой сомелье»: подача, бокал, блюда с учётом стиля, похожие вина, вина к блюду (`sommelier.py`)
+- [x] Решение «одна карточка или варианты» в `/v1/scan` и `/v1/search` (`verdict.py`): «не найдено» для 22–25 из 33 вин вне каталога
+- [ ] Что возвращать в `/v1/eval/predict`, если вина нет в каталоге — всё ещё открытый вопрос к организатору
+- [ ] Проверить `/app/` на живом сервисе с телефона (вёрстка проверена на демо-ответах) и прогнать `indexer --payload-only`
 
 ## Стек
 

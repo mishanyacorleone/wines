@@ -61,3 +61,26 @@ def upsert_batch(
         for slug, vector, payload in zip(slugs, vectors, payloads)
     ]
     client.upsert(collection_name=collection, points=points, wait=True)
+
+
+def overwrite_payloads(
+    client: QdrantClient,
+    collection: str,
+    slugs: Sequence[str],
+    payloads: Sequence[dict[str, Any]],
+) -> int:
+    """Перезаписывает payload уже проиндексированных точек, не трогая векторы.
+
+    Метаданные карточки меняются чаще картинок (описание, блюда, рейтинг):
+    их обновление не должно требовать GPU и повторного прогона энкодера.
+    Возвращает, сколько точек нашлось в коллекции.
+    """
+    ids = [point_id(slug) for slug in slugs]
+    existing = {str(p.id) for p in client.retrieve(collection, ids=ids, with_payload=False)}
+    updated = 0
+    for pid, payload in zip(ids, payloads):
+        if pid not in existing:
+            continue
+        client.overwrite_payload(collection, payload=payload, points=[pid], wait=False)
+        updated += 1
+    return updated

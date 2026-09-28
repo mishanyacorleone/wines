@@ -1,0 +1,206 @@
+[
+ {
+  "dish": "Сыры",
+  "icon": "🧀",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+  "wines": 1173
+ },
+ {
+  "dish": "Рыба и морепродукты",
+  "icon": "🐟",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ryba_moreprodukty_e57b445d95.webp",
+  "wines": 713
+ },
+ {
+  "dish": "Мясо и стейки",
+  "icon": "🥩",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/myaso_442273df41.webp",
+  "wines": 707
+ },
+ {
+  "dish": "Легкие закуски",
+  "icon": "🫒",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/legkie_zakuski_e5a2dedbf7.webp",
+  "wines": 567
+ },
+ {
+  "dish": "Салаты",
+  "icon": "🥗",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/salat_1afebb2167.webp",
+  "wines": 502
+ },
+ {
+  "dish": "Блюда из птицы",
+  "icon": "🍗",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ptica_9a6c7e3ea1.webp",
+  "wines": 446
+ },
+ {
+  "dish": "Паста",
+  "icon": "🍝",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/pasta_9ce9a580b2.webp",
+  "wines": 267
+ },
+ {
+  "dish": "Морепродукты",
+  "icon": "🦐",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ostroe_cd4130b86a.webp",
+  "wines": 266
+ },
+ {
+  "dish": "Мясное ассорти",
+  "icon": "🥓",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/kavkazskaya_kuhnya_0f18f731b5.webp",
+  "wines": 203
+ },
+ {
+  "dish": "BBQ",
+  "icon": "🍖",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/kavkazskaya_kuhnya_0f18f731b5.webp",
+  "wines": 149
+ },
+ {
+  "dish": "Выпечка и десерты",
+  "icon": "🍰",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/nesladkaya_vypechka_05bf04c48c.webp",
+  "wines": 121
+ },
+ {
+  "dish": "Овощи гриль",
+  "icon": "🫑",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ovoshi_grill_7539c7f339.webp",
+  "wines": 103
+ },
+ {
+  "dish": "Фрукты",
+  "icon": "🍇",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/frukty_545dae1854.webp",
+  "wines": 99
+ },
+ {
+  "dish": "Паштеты",
+  "icon": "🍞",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/russkaya_kuhnya_d6b2c07249.webp",
+  "wines": 94
+ },
+ {
+  "dish": "Десерты",
+  "icon": "🍰",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/sladkaya_vypechka_71424474e1.webp",
+  "wines": 85
+ },
+ {
+  "dish": "Устрицы",
+  "icon": "🦪",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ustricy_aaab30581c.webp",
+  "wines": 80
+ },
+ {
+  "dish": "Пицца",
+  "icon": "🍕",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/pizza_d054f8ea44.webp",
+  "wines": 76
+ },
+ {
+  "dish": "Азиатская кухня",
+  "icon": "🥢",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ostroe_cd4130b86a.webp",
+  "wines": 50
+ },
+ {
+  "dish": "Кавказская кухня",
+  "icon": "🍢",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/kavkazskaya_kuhnya_0f18f731b5.webp",
+  "wines": 47
+ },
+ {
+  "dish": "Блюда из рыбы",
+  "icon": "🐟",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ryba_moreprodukty_e57b445d95.webp",
+  "wines": 47
+ },
+ {
+  "dish": "Кухни народов мира",
+  "icon": "🌍",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/kuhni_narodov_mira_3c04fdacff.webp",
+  "wines": 43
+ },
+ {
+  "dish": "Брускетты",
+  "icon": "🥖",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/fastfood_9fbdc9215b.webp",
+  "wines": 35
+ },
+ {
+  "dish": "Несладкая выпечка",
+  "icon": "🥐",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/nesladkaya_vypechka_05bf04c48c.webp",
+  "wines": 29
+ },
+ {
+  "dish": "Закуски",
+  "icon": "🫒",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/sredizemnomorskaya_kuhnya_3c8be7f1a7.webp",
+  "wines": 28
+ },
+ {
+  "dish": "Фастфуд",
+  "icon": "🍔",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/fastfood_9fbdc9215b.webp",
+  "wines": 27
+ },
+ {
+  "dish": "Средиземноморская кухня",
+  "icon": "🫒",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/panasian_kuhnya_9b6b0e0ba3.webp",
+  "wines": 25
+ },
+ {
+  "dish": "Запеченные овощи",
+  "icon": "🫑",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ovoshi_grill_7539c7f339.webp",
+  "wines": 23
+ },
+ {
+  "dish": "Мороженое",
+  "icon": "🍨",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/sladkaya_vypechka_71424474e1.webp",
+  "wines": 22
+ },
+ {
+  "dish": "Фруктово-ягодные десерты",
+  "icon": "🍓",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/frukty_545dae1854.webp",
+  "wines": 21
+ },
+ {
+  "dish": "Лёгкие закуски",
+  "icon": "🫒",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/legkie_zakuski_e5a2dedbf7.webp",
+  "wines": 12
+ },
+ {
+  "dish": "Шоколад",
+  "icon": "🍫",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/sladkaya_vypechka_71424474e1.webp",
+  "wines": 11
+ },
+ {
+  "dish": "Острое",
+  "icon": "🌶️",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ostroe_cd4130b86a.webp",
+  "wines": 10
+ },
+ {
+  "dish": "Свежие овощи",
+  "icon": "🥒",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/salat_1afebb2167.webp",
+  "wines": 7
+ },
+ {
+  "dish": "Русская кухня",
+  "icon": "🥟",
+  "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/russkaya_kuhnya_d6b2c07249.webp",
+  "wines": 4
+ }
+]

@@ -1,0 +1,104 @@
+{
+ "status": "not_found",
+ "top1_confident": false,
+ "reason": "low_similarity",
+ "message": "Такое вино не найдено в каталоге — возможно, это одно из похожих",
+ "wine": null,
+ "alternatives": [
+  {
+   "slug": "inkerman-shato-ruzh",
+   "url": "https://vino-svoe.ru/wines/inkerman-shato-ruzh",
+   "title": "Inkerman Шато Руж",
+   "manufacturer": "Инкерманский ЗМВ",
+   "category": "Красное полусухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Мерло",
+    "Пино Нуар"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Ruzh_85fa6ee9ce.webp",
+   "rank": 1,
+   "confidence": 0.3378,
+   "reasons": []
+  },
+  {
+   "slug": "vinodelnya-begildeeva-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/vinodelnya-begildeeva-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Каберне Совиньон",
+   "manufacturer": "Винодельня Бегильдеева",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_begildeeva_kaberne_sovinon_krasnoe_suhoe_14_1108f8580b.webp",
+   "rank": 2,
+   "confidence": 0.2028,
+   "reasons": []
+  },
+  {
+   "slug": "inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
+   "url": "https://vino-svoe.ru/wines/inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
+   "title": "Winemaker's Selection Саперави",
+   "manufacturer": "Инкерманский ЗМВ",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/inkermanskiy_zmv_winemakers_selection_saperavi_igristoe_polusladkoe_krasnoe_12_b8254979b2.webp",
+   "rank": 3,
+   "confidence": 0.1557,
+   "reasons": []
+  },
+  {
+   "slug": "kuban-vino-kaberne-de-tamane-kaberne-sovinon-krasnoe-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/kuban-vino-kaberne-de-tamane-kaberne-sovinon-krasnoe-suhoe-125",
+   "title": "Каберне де Тамань",
+   "manufacturer": "Кубань-Вино",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/kuban_vino_kaberne_de_tamane_kaberne_sovinon_krasnoe_suhoe_125_d65b4385ed.webp",
+   "rank": 4,
+   "confidence": 0.1519,
+   "reasons": []
+  },
+  {
+   "slug": "inkerman-shato-blan",
+   "url": "https://vino-svoe.ru/wines/inkerman-shato-blan",
+   "title": "Инкерман Шато Блан",
+   "manufacturer": "Инкерманский ЗМВ",
+   "category": "Белое полусухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 4.25,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Blan_beloe_polusuhoe_526e6530b9.webp",
+   "rank": 5,
+   "confidence": 0.1518,
+   "reasons": []
+  }
+ ],
+ "timings": {
+  "decode_ms": 120.0,
+  "encode_ms": 200.0,
+  "search_ms": 6.0,
+  "ocr_ms": 280.0,
+  "vlm_ms": 0.0,
+  "total_ms": 606.0
+ }
+}

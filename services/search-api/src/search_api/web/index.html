@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FEFDFA">
+  <title>Найти вино по фото · Своё Вино</title>
+  <meta name="description" content="Сфотографируйте этикетку — найдём вино в каталоге «Своё Вино» и подскажем, с чем и как его подать.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%238F3D42'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css?v=5">
+</head>
+<body>
+  <!-- Шапка как .core-header на vino-svoe.ru: плавающая «таблетка».
+       Широкий экран: логотип, меню разделов сайта, кнопка поиска.
+       Телефон: логотип, лупа и кнопка меню, которая раскрывает шапку на весь экран. -->
+  <header class="core-header" id="header">
+    <div class="core-container">
+      <div class="core-header__wrapper">
+        <div class="core-header__bar">
+          <a class="ui-logo" href="https://vino-svoe.ru/" aria-label="Своё Вино — главная">
+            <img class="svoe-vino-logo" src="https://vino-svoe.ru/svg/logo/svoe-vino-logo.svg" alt="Своё Вино" width="160" height="40"
+                 onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-fallback',textContent:'Своё Вино'}))">
+          </a>
+          <nav class="core-header-nav core-header__desktop-nav" aria-label="Разделы сайта">
+            <a class="core-header-nav__link" href="https://vino-svoe.ru/articles">Истории в бокале</a>
+            <a class="core-header-nav__link" href="https://vino-svoe.ru/wines">Свои вина</a>
+            <a class="core-header-nav__link" href="https://vino-svoe.ru/events">События</a>
+            <a class="core-header-nav__link" href="https://vino-svoe.ru/tours">Винные туры</a>
+            <a class="core-header-nav__link" href="https://vino-svoe.ru/wineries">Винодельни и регионы</a>
+            <a class="core-header-nav__link" href="https://vino-svoe.ru/surveys/vinnyj-barometr">Винный Барометр</a>
+          </nav>
+          <div class="core-header__container">
+            <button class="ui-button ui-button_transparent core-header__camera" type="button" data-action="camera"
+                    aria-label="Найти вино по фото" title="Найти вино по фото">
+              <svg class="i" aria-hidden="true"><use href="#i-camera"/></svg>
+            </button>
+            <button class="ui-button ui-button_transparent core-header__search" type="button" data-action="search" aria-label="Поиск">
+              <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            </button>
+            <button class="ui-button ui-button_primary ui-button_round core-header__action-button" type="button"
+                    data-action="menu" aria-label="Меню" aria-expanded="false" aria-controls="mobile-nav">
+              <svg class="i core-header__icon-search" aria-hidden="true"><use href="#i-search"/></svg>
+              <svg class="i core-header__icon-menu" aria-hidden="true"><use href="#i-menu"/></svg>
+              <svg class="i core-header__icon-close" aria-hidden="true"><use href="#i-x"/></svg>
+            </button>
+          </div>
+        </div>
+        <nav class="core-header__mobile-nav" id="mobile-nav" aria-label="Разделы сайта">
+          <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/articles">Истории в бокале</a>
+          <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/wines">Свои вина</a>
+          <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/events">События</a>
+          <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/tours">Винные туры</a>
+          <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/wineries">Винодельни и регионы</a>
+          <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/surveys/vinnyj-barometr">Винный Барометр</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Демо-режим: ответы заготовлены, фото не распознаётся — пользователь должен это видеть -->
+  <div class="demo-banner" id="demo-banner" hidden role="note">
+    <b>Демо-режим:</b> фото не распознаётся, ответ заготовлен заранее.
+    Для настоящего распознавания откройте сканер через сервис: <code>http://&lt;хост&gt;:8080/app/</code>
+  </div>
+
+  <main class="main" id="app">
+    <!-- 1. Сканер -->
+    <section class="screen screen--active" id="screen-scan" aria-labelledby="scan-title">
+      <div class="title-block">
+        <h1 class="title-block__title" id="scan-title">Найдите своё вино по&nbsp;фото</h1>
+        <p class="title-block__lead">Сфотографируйте этикетку — покажем карточку вина, подходящие блюда и&nbsp;температуру подачи</p>
+      </div>
+
+      <button class="viewfinder" type="button" data-action="camera" aria-label="Сфотографировать этикетку">
+        <span class="viewfinder__frame" aria-hidden="true"></span>
+        <svg class="viewfinder__bottle" viewBox="0 0 60 160" aria-hidden="true"><path d="M24 4h12v34c0 6 14 14 14 34v78a6 6 0 0 1-6 6H16a6 6 0 0 1-6-6V72c0-20 14-28 14-34V4Z"/><rect x="14" y="88" width="32" height="36" rx="3" stroke-dasharray="4 3"/></svg>
+        <span class="viewfinder__hint">Наведите камеру на этикетку</span>
+      </button>
+
+      <div class="actions">
+        <button class="ui-button ui-button_primary ui-button_large" type="button" data-action="camera">
+          <svg class="i" aria-hidden="true"><use href="#i-camera"/></svg>
+          Сфотографировать этикетку
+        </button>
+        <label class="ui-button ui-button_elevated ui-button_large" for="input-gallery">
+          <svg class="i" aria-hidden="true"><use href="#i-image"/></svg>
+          Выбрать из галереи
+        </label>
+        <input class="visually-hidden" type="file" id="input-camera" accept="image/*" capture="environment">
+        <input class="visually-hidden" type="file" id="input-gallery" accept="image/*">
+      </div>
+
+      <section class="info-card" aria-label="Как снять, чтобы распознать точнее">
+        <div class="detail">
+          <span class="detail__image detail__image--icon"><svg class="i" aria-hidden="true"><use href="#i-tag"/></svg></span>
+          <div><p class="detail__label">Ракурс</p><p class="detail__value">Снимайте этикетку спереди, не под углом</p></div>
+        </div>
+        <div class="detail">
+          <span class="detail__image detail__image--icon"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></span>
+          <div><p class="detail__label">Свет</p><p class="detail__value">Без бликов от ламп и витрин</p></div>
+        </div>
+        <div class="detail">
+          <span class="detail__image detail__image--icon"><svg class="i" aria-hidden="true"><use href="#i-wine"/></svg></span>
+          <div><p class="detail__label">Кадр</p><p class="detail__value">Одна бутылка — без соседних</p></div>
+        </div>
+      </section>
+
+      <section class="dishes-card" id="home-dishes" aria-label="Подобрать вино к блюду">
+        <div class="dishes-card__left">
+          <span class="round-icon"><svg class="i" aria-hidden="true"><use href="#i-utensils"/></svg></span>
+          <p class="dishes-card__label">Подобрать вино к&nbsp;блюду</p>
+        </div>
+        <div class="dishes-card__slider" id="dish-grid"></div>
+      </section>
+    </section>
+
+    <!-- 2. Распознавание -->
+    <section class="screen" id="screen-loading" aria-live="polite" aria-busy="true">
+      <div class="title-block">
+        <h1 class="title-block__title">Ищем ваше вино</h1>
+        <p class="title-block__subtitle" id="loading-step">Сравниваем с каталогом…</p>
+      </div>
+      <div class="loading__photo">
+        <img id="loading-img" alt="Ваше фото">
+        <span class="loading__scanline" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <!-- 3. Результат: карточка или «не найдено» -->
+    <section class="screen" id="screen-result" aria-live="polite"></section>
+  </main>
+
+  <!-- Камера в браузере (getUserMedia). На телефоне вместо неё — системная
+       камера через <input capture>: она лучше фокусируется и умеет вспышку -->
+  <div class="camera" id="camera" hidden role="dialog" aria-modal="true" aria-label="Камера">
+    <video class="camera__video" id="camera-video" playsinline muted autoplay></video>
+    <span class="camera__frame" aria-hidden="true"></span>
+    <p class="camera__hint">Этикетка должна занимать большую часть кадра</p>
+    <div class="camera__bar">
+      <button class="camera__side" type="button" data-action="camera-gallery" aria-label="Выбрать из галереи">
+        <svg class="i" aria-hidden="true"><use href="#i-image"/></svg>
+      </button>
+      <button class="camera__shutter" type="button" data-action="camera-shoot" aria-label="Сделать снимок"></button>
+      <button class="camera__side camera__side--off" type="button" data-action="camera-switch" id="camera-switch" aria-label="Другая камера">
+        <svg class="i" aria-hidden="true"><use href="#i-switch"/></svg>
+      </button>
+    </div>
+    <button class="camera__close" type="button" data-action="camera-close" aria-label="Закрыть камеру">
+      <svg class="i" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+
+  <!-- Поиск как .app-modal-search на сайте: страница размывается, сверху поле -->
+  <div class="search-modal" id="search" hidden role="dialog" aria-modal="true" aria-label="Поиск">
+    <div class="search-modal__backdrop" data-action="search-close"></div>
+    <div class="search-modal__panel">
+      <form class="search-modal__field" id="search-form" role="search">
+        <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+        <input class="search-modal__input" id="search-input" type="search" autocomplete="off" enterkeyhint="search"
+               placeholder="Название вина, винодельня или сорт" aria-label="Поиск вина">
+        <button class="ui-button ui-button_transparent" type="button" data-action="camera" aria-label="Найти вино по фото" title="Найти по фото">
+          <svg class="i" aria-hidden="true"><use href="#i-camera"/></svg>
+        </button>
+        <button class="ui-button ui-button_transparent" type="button" data-action="search-close" aria-label="Закрыть поиск">
+          <svg class="i" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </form>
+      <div class="search-modal__results" id="search-results" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Нижняя шторка: «Не то вино?», вина к блюду -->
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet__backdrop" data-action="close-sheet"></div>
+    <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet__grip" aria-hidden="true"></div>
+      <div class="sheet__head">
+        <h2 class="sheet__title" id="sheet-title"></h2>
+        <button class="ui-button ui-button_transparent sheet__close" type="button" data-action="close-sheet" aria-label="Закрыть">
+          <svg class="i" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </div>
+      <div class="sheet__body" id="sheet-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <footer class="core-footer">
+    <div class="core-footer__bottom">
+      <a class="core-footer__link" href="https://vino-svoe.ru/" target="_blank" rel="noopener">Каталог «Своё Вино»</a>
+      <p class="core-footer__copy">© Своё Вино, Россельхозбанк</p>
+      <p class="core-footer__warn">Чрезмерное употребление алкоголя вредит вашему здоровью. 18+</p>
+    </div>
+  </footer>
+
+  <!-- Иконки Lucide (ISC) — тот же набор, что на сайте (iconify i-lucide:*) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+      <symbol id="i-wine" viewBox="0 0 24 24"><path d="M8 22h8M7 10h10M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></symbol>
+      <symbol id="i-thermometer" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></symbol>
+      <symbol id="i-percent" viewBox="0 0 24 24"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+      <symbol id="i-utensils" viewBox="0 0 24 24"><path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3M19 5l-7 7"/></symbol>
+      <symbol id="i-wind" viewBox="0 0 24 24"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2M9.6 4.6A2 2 0 1 1 11 8H2M12.6 19.4A2 2 0 1 0 14 16H2"/></symbol>
+      <symbol id="i-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+      <symbol id="i-glass" viewBox="0 0 24 24"><path d="M5 2h14l-1.5 9a5.5 5.5 0 0 1-11 0L5 2Z"/><path d="M12 16.5V22M8 22h8"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+      <symbol id="i-grape" viewBox="0 0 24 24"><circle cx="9" cy="9" r="2.5"/><circle cx="14" cy="9" r="2.5"/><circle cx="11.5" cy="13" r="2.5"/><circle cx="7" cy="13" r="2.5"/><circle cx="16" cy="13" r="2.5"/><circle cx="11.5" cy="17.5" r="2.5"/><path d="M11.5 6.5V2M11.5 3.5c2 0 4 .5 5 2"/></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r=".5"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+      <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+      <symbol id="i-switch" viewBox="0 0 24 24"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3M6 2l3 3-3 3"/></symbol>
+      <symbol id="i-search-x" viewBox="0 0 24 24"><path d="m13.5 8.5-5 5M8.5 8.5l5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    </defs>
+  </svg>
+
+  <script src="app.js?v=5"></script>
+</body>
+</html>

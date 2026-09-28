@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from .build import build_index
+from .build import build_index, refresh_payloads
 from .config import index_settings
 
 
@@ -16,6 +16,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--recreate", action="store_true", help="пересоздать коллекцию с нуля")
     parser.add_argument("--limit", type=int, default=None, help="только первые N вин (проба)")
+    parser.add_argument(
+        "--payload-only",
+        action="store_true",
+        help="обновить только метаданные карточек (блюда, подача, описание) без пересчёта векторов",
+    )
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -24,6 +29,16 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+
+    if args.payload_only:
+        stats = refresh_payloads(index_settings)
+        print(
+            f"\nPayload обновлён: {stats.indexed}\n"
+            f"Нет в коллекции (пропущено): {stats.skipped}\n"
+            f"Время: {stats.seconds:.1f} с\n"
+            f"Коллекция: {index_settings.collection} @ {index_settings.qdrant_url}"
+        )
+        return 0
 
     stats = build_index(index_settings, recreate=args.recreate, limit=args.limit)
 

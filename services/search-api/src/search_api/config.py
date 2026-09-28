@@ -59,5 +59,21 @@ class ApiSettings:
         default_factory=lambda: Path(_env("CATALOG_DIR", str(REPO_ROOT / "data" / "catalog")))
     )
 
+    # Решение «одна карточка или варианты» (search_api.verdict): пороги
+    # подобраны на размеченных фото, см. docstring модуля
+    accept_min_image_score: float = float(_env("ACCEPT_MIN_IMAGE_SCORE", "0.76"))
+    accept_min_margin: float = float(_env("ACCEPT_MIN_MARGIN", "0.02"))
+    accept_min_vlm_prob: float = float(_env("ACCEPT_MIN_VLM_PROB", "0.8"))
+    accept_max_vlm_none_prob: float = float(_env("ACCEPT_MAX_VLM_NONE_PROB", "0.5"))
+
+    # Веб-интерфейс сканера и отзывы пользователей («не то вино»)
+    web_enabled: bool = _env("WEB_ENABLED", "1") == "1"
+    feedback_dir: Path = field(
+        default_factory=lambda: Path(_env("FEEDBACK_DIR", str(REPO_ROOT / "data" / "feedback")))
+    )
+    # Ресайз-API картинок сайта: фото бутылок (если нет локального PNG),
+    # блюд, регионов и сортов (search_api/site_media.json)
+    site_image_api: str = _env("SITE_IMAGE_API", "https://api.vino-svoe.ru/v1/img/str-api")
+
 
 api_settings = ApiSettings()

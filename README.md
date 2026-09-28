@@ -93,8 +93,34 @@ PYTHONPATH=services/catalog-scraper/src .venv/bin/python -m catalog_scraper
 # 3. Индексация (~3,5 минуты на 2097 фото)
 PYTHONPATH=libs/wine-embeddings/src:services/indexer/src .venv/bin/python -m indexer --recreate
 
+# 3a. Только метаданные карточек (блюда, подача, описание) — без GPU, секунды.
+#     Нужен один раз для индекса, построенного до появления сомелье
+PYTHONPATH=libs/wine-embeddings/src:services/indexer/src .venv/bin/python -m indexer --payload-only
+
 # 4. Сервис (читает .env)
 PYTHONPATH=libs/wine-embeddings/src:services/search-api/src .venv/bin/python -m search_api
+```
+
+Мобильный сканер — `http://<хост>:8080/app/` (корень `/` перенаправляет туда).
+Кнопка «Сфотографировать этикетку»:
+
+- **телефон** — системная камера через `<input capture>` (автофокус, вспышка);
+  работает и по обычному HTTP в локальной сети;
+- **ноутбук** — `<input capture>` браузеры игнорируют и открывают выбор файла,
+  поэтому камера открывается прямо в странице (`getUserMedia`). Браузер даёт
+  камеру только на `https://` или `localhost`; на `http://<ip>` и при отказе в
+  доступе страница скажет об этом и откроет выбор файла.
+
+Чтобы открыть с телефона, запустите сервис с `WINE_API_HOST=0.0.0.0`.
+Лупа в шапке ищет вино по каталогу (`GET /v1/catalog/search`) и даёт ссылку
+на поиск по всему сайту (`vino-svoe.ru/search-result`).
+
+Вёрстку можно смотреть без GPU и сервиса — на заготовленных ответах:
+
+```bash
+python tools/web-demo/build_demo.py          # пересобрать demo/ из catalog.jsonl
+python -m http.server 8765 --directory services/search-api/src/search_api/web
+# http://localhost:8765/?demo=match&autorun=1  и  ?demo=not_found&autorun=1
 ```
 
 Проверка:
@@ -103,7 +129,42 @@ PYTHONPATH=libs/wine-embeddings/src:services/search-api/src .venv/bin/python -m 
 curl --noproxy '*' http://127.0.0.1:8080/health
 curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/search?top_k=5' -F image=@photo.jpg
 curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/eval/predict' -F image=@photo.jpg   # {"slug": "..."}
+curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/scan' -F image=@photo.jpg          # карточка + сомелье
+curl --noproxy '*' 'http://127.0.0.1:8080/v1/wines/vermentino-viognier-2022'
+curl --noproxy '*' 'http://127.0.0.1:8080/v1/pairing?dish=Сыры&style=red'
 ```
+
+## Сканер для пользователя
+
+| Метод | Что отдаёт |
+|---|---|
+| `POST /v1/scan` | `status` (`match` / `not_found`), `top1_confident`, `reason`, готовый `message`; при `match` — `wine` (карточка + советы сомелье + похожие вина) и остальные из топ-5 в `alternatives`; при `not_found` — топ-5 в `alternatives` |
+| `GET /v1/wines/{slug}` | карточка с советами — когда пользователь выбрал вариант сам |
+| `GET /v1/pairing?dish=&style=` | вина к блюду (сначала точное блюдо, затем то же семейство, внутри — по народному рейтингу) |
+| `GET /v1/pairing/dishes` | все блюда каталога с числом вин |
+| `GET /v1/catalog/search?q=` | поиск вина по названию, производителю, сорту, региону |
+| `POST /v1/feedback` | «да, это оно» / «выбрал другое» / «моего вина нет» → `data/feedback/feedback.jsonl` |
+
+`/v1/search` тоже отдаёт `status`, `top1_confident` и `reason`; контракт
+`/v1/eval/predict` не менялся.
+
+**Решение «одна карточка или варианты»** (`search_api/verdict.py`): карточка
+показывается, только если балл картинки топ-1 ≥ 0,76 и (без VLM) отрыв от
+второго ≥ 0,02 или (с VLM) его вероятность ≥ 0,8 и вероятность «ни одна не
+подходит» < 0,5. Иначе — «такое вино не найдено» и топ-5. На 99 размеченных
+фото: без VLM показано 60 карточек, верных 48 (80%), «не найдено» получили
+22 из 33 вин вне каталога; с VLM — 65 / 55 (85%) / 25 из 33. Пороги подобраны
+на той же выборке — это подгонка, а не независимый замер.
+
+Фото блюд, регионов и сортов, как на сайте, берутся из
+`search_api/site_media.json`; пересобрать его после пополнения каталога —
+`python tools/site-media/fetch_site_media.py` (обходит ~110 страниц вин с паузой).
+
+**Цифровой сомелье** (`search_api/sommelier.py`) — правила по полям каталога,
+без внешних данных и моделей: стиль и тело вина (по категории и крепости),
+температура подачи и как её добиться, бокал, аэрация, конкретные блюда к
+каждой группе из карточки с учётом стиля вина, похожие вина с объяснением
+(«тот же сорт: Верментино», «тоже Крым»; не больше двух от одного производителя).
 
 ## Оценка качества
 
@@ -155,6 +216,13 @@ PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/sr
 | `WINE_VLM_CANDIDATE_IMAGES` | `1` | показывать VLM эталонные фото кандидатов, а не только текст карточек |
 | `WINE_VLM_QUERY_MAX_PIXELS` | `524288` | площадь, до которой уменьшается фото пользователя для VLM |
 | `WINE_VLM_CANDIDATE_MAX_PIXELS` | `131072` | площадь эталонного фото кандидата |
+| `WINE_ACCEPT_MIN_IMAGE_SCORE` | `0.76` | ниже — «вино не найдено» |
+| `WINE_ACCEPT_MIN_MARGIN` | `0.02` | без VLM: минимальный отрыв топ-1 от топ-2 |
+| `WINE_ACCEPT_MIN_VLM_PROB` | `0.8` | с VLM: минимальная вероятность топ-1 |
+| `WINE_ACCEPT_MAX_VLM_NONE_PROB` | `0.5` | с VLM: выше — «вино не найдено» |
+| `WINE_WEB_ENABLED` | `1` | мобильный сканер на `/app/` |
+| `WINE_FEEDBACK_DIR` | `./data/feedback` | куда писать отклики пользователей |
+| `WINE_SITE_IMAGE_API` | ресайз-API vino-svoe.ru | фото бутылки, если нет локального PNG каталога |
 | `SCRAPER_*` | см. `services/catalog-scraper/README.md` | параметры сбора каталога |
 
 С VLM OCR перестаёт давать прирост точности (96,2% с ним и без), поэтому
@@ -165,9 +233,10 @@ PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/sr
 - **Точность измерена на 53 уверенно размеченных фото** — выборка маленькая,
   1 фото ≈ 2 п.п., разница в 1–2 фото между настройками — шум. Ground truth
   организатор не выдаёт, разметка ручная.
-- **Отказ «нет в каталоге» не реализован.** Таких фото в публичной выборке треть;
-  сервис всегда возвращает ближайшее вино. Ответ VLM «ни одна не подходит»
-  ловит 6 из 33 без ложных отказов — как единственный сигнал этого мало.
+- **Отказ «нет в каталоге» — только в пользовательских ручках.** `/v1/scan` и
+  поле `status` в `/v1/search` говорят «не найдено» для 22–25 из 33 вин вне
+  каталога; `/v1/eval/predict` по-прежнему всегда возвращает ближайшее вино —
+  какой ответ ждёт организатор в этом случае, неизвестно.
 - **Вероятность VLM не откалибрована**: почти всегда 0,9–1,0, в том числе на ошибках.
 - **25 групп каталожных фото байт-идентичны** (50 вин): одна и та же картинка
   на разные slug — различить их по изображению невозможно.

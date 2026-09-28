@@ -15,7 +15,7 @@ from wine_embeddings.runtime import bypass_proxy_for_localhost, vram_used_gb
 
 from .catalog import load_catalog
 from .config import IndexSettings
-from .store import ensure_collection, upsert_batch
+from .store import ensure_collection, overwrite_payloads, upsert_batch
 
 logger = logging.getLogger(__name__)
 
@@ -76,4 +76,28 @@ def build_index(
 
     stats.seconds = time.perf_counter() - started
     stats.vram_peak_gb = vram_used_gb()
+    return stats
+
+
+def refresh_payloads(settings: IndexSettings, *, batch_size: int = 256) -> IndexStats:
+    """Обновляет только payload точек из catalog.jsonl — без модели и GPU.
+
+    Нужен, когда в карточку добавились поля (блюда, температура подачи,
+    описание), а картинки не менялись: секунды вместо переиндексации.
+    Вина, которых ещё нет в коллекции, пропускаются — их добавляет обычный прогон.
+    """
+    entries = load_catalog(settings.catalog_path, settings.site_base_url)
+    bypass_proxy_for_localhost()
+    client = QdrantClient(url=settings.qdrant_url)
+
+    stats = IndexStats()
+    started = time.perf_counter()
+    for start in tqdm(range(0, len(entries), batch_size), desc="Payload"):
+        batch = entries[start : start + batch_size]
+        updated = overwrite_payloads(
+            client, settings.collection, [e.slug for e in batch], [e.payload for e in batch]
+        )
+        stats.indexed += updated
+        stats.skipped += len(batch) - updated
+    stats.seconds = time.perf_counter() - started
     return stats

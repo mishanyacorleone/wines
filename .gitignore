@@ -13,6 +13,8 @@ data/catalog/images/
 data/real-photos/
 data/qdrant/
 data/Датасет (1)/Реальные фото.zip
+# отклики пользователей сканера (POST /v1/feedback) — данные конкретного стенда
+data/feedback/
 
 # Бинарник Qdrant (86 МБ) — качается с GitHub-релиза, см. README
 infra/bin/

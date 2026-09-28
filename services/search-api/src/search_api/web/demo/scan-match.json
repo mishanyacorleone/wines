@@ -1,0 +1,318 @@
+{
+ "status": "match",
+ "top1_confident": true,
+ "reason": "confident",
+ "message": "Нашли ваше вино",
+ "wine": {
+  "slug": "gevyurcztraminer-oranzh",
+  "url": "https://vino-svoe.ru/wines/gevyurcztraminer-oranzh",
+  "title": "Гевюрцтраминер Оранж",
+  "manufacturer": "Усадьба Перовских",
+  "category": "Оранжевое сухое",
+  "region": "Крым",
+  "grapes": [
+   "Гевюрцтраминер"
+  ],
+  "alcohol": 12.0,
+  "public_rating": 4.92,
+  "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Gevyurcztraminer_Oranzh_Usadba_Petovskih_f3d914f332.webp",
+  "rank": 1,
+  "confidence": 0.93,
+  "reasons": [],
+  "color": "Золотистый с розовым отливом",
+  "temperature": "10-12",
+  "dishes": [
+   "Азиатская кухня",
+   "Запеченные овощи",
+   "Сыры"
+  ],
+  "description": "Брожение на мезге в течение 21 дня.\n\nВинодел: Дмитрий Болотаев\n\nВ аромате благоухающие лепестки роз и цветов. Во вкусе — баланс между яркой фруктовостью и тонкой танинной структурой, с оттенками кураги, айвы и специй.\n \nВино получилось ярким и гастрономичным.",
+  "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+  "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Traminer_rozovyj_1b5cafd2a9.webp",
+  "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Gevyurcztraminer_0266e6c621.webp",
+  "sommelier": {
+   "summary": "Оранжевое сухое, среднее тело (12%); подавать при 10–12 °C; к блюдам: азиатская кухня, запеченные овощи, сыры.",
+   "style": {
+    "key": "orange",
+    "color": "Оранжевое",
+    "sweetness": "сухое",
+    "sparkling": false,
+    "body": "среднее",
+    "body_level": 2
+   },
+   "serving": {
+    "temperature": "10–12 °C",
+    "temperature_min": 10,
+    "temperature_max": 12,
+    "tip": "Достаньте из холодильника за 15–20 минут до подачи",
+    "glass": "Бокал для белого вина с широкой чашей",
+    "aeration": "Можно дать вину подышать 10–15 минут — аромат станет глубже"
+   },
+   "alcohol": {
+    "value": 12.0,
+    "note": "Умеренная крепость — универсально к ужину"
+   },
+   "pairings": [
+    {
+     "dish": "Азиатская кухня",
+     "icon": "🥢",
+     "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ostroe_cd4130b86a.webp",
+     "tip": "Роллы, вок, блюда с имбирём"
+    },
+    {
+     "dish": "Запеченные овощи",
+     "icon": "🫑",
+     "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ovoshi_grill_7539c7f339.webp",
+     "tip": "Овощи гриль, баклажаны, перец, цукини"
+    },
+    {
+     "dish": "Сыры",
+     "icon": "🧀",
+     "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+     "tip": "Выдержанные и пикантные: пекорино, комте, сыры с плесенью"
+    }
+   ]
+  },
+  "similar": [
+   {
+    "slug": "oxana-istratova-wine-rkatsiteli-2023-oranzhevoe-suhoe-113",
+    "url": "https://vino-svoe.ru/wines/oxana-istratova-wine-rkatsiteli-2023-oranzhevoe-suhoe-113",
+    "title": "Ркацители 2023",
+    "manufacturer": "Oxana Istratova Wine",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Ркацители"
+    ],
+    "alcohol": 11.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oxana_istratova_wine_rkatsiteli_2023_oranzhevoe_suhoe_113_ed2c3cbe36.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым",
+     "к тем же блюдам"
+    ]
+   },
+   {
+    "slug": "esse-gevyurtstraminer-beloe-suhoe-12",
+    "url": "https://vino-svoe.ru/wines/esse-gevyurtstraminer-beloe-suhoe-12",
+    "title": "Гевюрцтраминер",
+    "manufacturer": "ESSE",
+    "category": "Белое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Гевюрцтраминер"
+    ],
+    "alcohol": 12.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_gevyurtstraminer_beloe_suhoe_12_c0993e07dc.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тот же сорт: Гевюрцтраминер",
+     "тоже Крым"
+    ]
+   },
+   {
+    "slug": "rem-akchurin-muskat-oranzh-oranzhevoe-suhoe-115",
+    "url": "https://vino-svoe.ru/wines/rem-akchurin-muskat-oranzh-oranzhevoe-suhoe-115",
+    "title": "Мускат Оранж",
+    "manufacturer": "Rem Akchurin",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Мускат"
+    ],
+    "alcohol": 11.0,
+    "public_rating": 5.0,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/rem_akchurin_muskat_oranzh_oranzhevoe_suhoe_115_d72b609dd9.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым"
+    ]
+   },
+   {
+    "slug": "vaynkraft-traminer-oranzh-2-traminer-rozovyy-oranzhevoe-suhoe-125",
+    "url": "https://vino-svoe.ru/wines/vaynkraft-traminer-oranzh-2-traminer-rozovyy-oranzhevoe-suhoe-125",
+    "title": "Траминер Оранж 2",
+    "manufacturer": "ВайнКрафт",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Траминер Розовый"
+    ],
+    "alcohol": 12.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_traminer_oranzh_2_traminer_rozovyy_oranzhevoe_suhoe_125_3c507d40ce.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым"
+    ]
+   },
+   {
+    "slug": "vaynkraft-traminer-oranzh-traminer-rozovyy-oranzhevoe-suhoe-125",
+    "url": "https://vino-svoe.ru/wines/vaynkraft-traminer-oranzh-traminer-rozovyy-oranzhevoe-suhoe-125",
+    "title": "Траминер Оранж",
+    "manufacturer": "ВайнКрафт",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Траминер Розовый"
+    ],
+    "alcohol": 12.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_traminer_oranzh_traminer_rozovyy_oranzhevoe_suhoe_125_8a46ea97b3.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым"
+    ]
+   },
+   {
+    "slug": "loco-cimbali-oranzh-muskat-oranzhevoe-suhoe-127",
+    "url": "https://vino-svoe.ru/wines/loco-cimbali-oranzh-muskat-oranzhevoe-suhoe-127",
+    "title": "Оранж",
+    "manufacturer": "Loco Cimbali",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Мускат"
+    ],
+    "alcohol": 12.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/loco_cimbali_oranzh_muskat_oranzhevoe_suhoe_127_dc98a21033.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым"
+    ]
+   },
+   {
+    "slug": "belbek-muskat-oranzh-muskat-belyy-oranzhevoe-suhoe-125",
+    "url": "https://vino-svoe.ru/wines/belbek-muskat-oranzh-muskat-belyy-oranzhevoe-suhoe-125",
+    "title": "Мускат Оранж",
+    "manufacturer": "Бельбек",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Мускат Белый"
+    ],
+    "alcohol": 12.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belbek_muskat_oranzh_muskat_belyy_oranzhevoe_suhoe_125_15ac5f6bc6.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым"
+    ]
+   },
+   {
+    "slug": "loco-cimbali-rkatsiteli-oranzhevoe-suhoe-13",
+    "url": "https://vino-svoe.ru/wines/loco-cimbali-rkatsiteli-oranzhevoe-suhoe-13",
+    "title": "Ркацители",
+    "manufacturer": "Loco Cimbali",
+    "category": "Оранжевое сухое",
+    "region": "Крым",
+    "grapes": [
+     "Ркацители"
+    ],
+    "alcohol": 13.0,
+    "public_rating": null,
+    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/loco_cimbali_rkatsiteli_oranzhevoe_suhoe_13_ebaa76e9a4.webp",
+    "rank": null,
+    "confidence": null,
+    "reasons": [
+     "тоже оранжевое сухое",
+     "тоже Крым"
+    ]
+   }
+  ]
+ },
+ "alternatives": [
+  {
+   "slug": "oxana-istratova-wine-rkatsiteli-2023-oranzhevoe-suhoe-113",
+   "url": "https://vino-svoe.ru/wines/oxana-istratova-wine-rkatsiteli-2023-oranzhevoe-suhoe-113",
+   "title": "Ркацители 2023",
+   "manufacturer": "Oxana Istratova Wine",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 11.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oxana_istratova_wine_rkatsiteli_2023_oranzhevoe_suhoe_113_ed2c3cbe36.webp",
+   "rank": 2,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "esse-gevyurtstraminer-beloe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/esse-gevyurtstraminer-beloe-suhoe-12",
+   "title": "Гевюрцтраминер",
+   "manufacturer": "ESSE",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Гевюрцтраминер"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_gevyurtstraminer_beloe_suhoe_12_c0993e07dc.webp",
+   "rank": 3,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "rem-akchurin-muskat-oranzh-oranzhevoe-suhoe-115",
+   "url": "https://vino-svoe.ru/wines/rem-akchurin-muskat-oranzh-oranzhevoe-suhoe-115",
+   "title": "Мускат Оранж",
+   "manufacturer": "Rem Akchurin",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Мускат"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/rem_akchurin_muskat_oranzh_oranzhevoe_suhoe_115_d72b609dd9.webp",
+   "rank": 4,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "vaynkraft-traminer-oranzh-2-traminer-rozovyy-oranzhevoe-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/vaynkraft-traminer-oranzh-2-traminer-rozovyy-oranzhevoe-suhoe-125",
+   "title": "Траминер Оранж 2",
+   "manufacturer": "ВайнКрафт",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Траминер Розовый"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_traminer_oranzh_2_traminer_rozovyy_oranzhevoe_suhoe_125_3c507d40ce.webp",
+   "rank": 5,
+   "confidence": null,
+   "reasons": []
+  }
+ ],
+ "timings": {
+  "decode_ms": 120.0,
+  "encode_ms": 200.0,
+  "search_ms": 6.0,
+  "ocr_ms": 280.0,
+  "vlm_ms": 0.0,
+  "total_ms": 606.0
+ }
+}
