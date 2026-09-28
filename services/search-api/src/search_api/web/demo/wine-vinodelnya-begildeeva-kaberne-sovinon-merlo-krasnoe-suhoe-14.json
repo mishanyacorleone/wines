@@ -1,0 +1,234 @@
+{
+ "slug": "vinodelnya-begildeeva-kaberne-sovinon-merlo-krasnoe-suhoe-14",
+ "url": "https://vino-svoe.ru/wines/vinodelnya-begildeeva-kaberne-sovinon-merlo-krasnoe-suhoe-14",
+ "title": "Каберне Совиньон – Мерло",
+ "manufacturer": "Винодельня Бегильдеева",
+ "category": "Красное сухое",
+ "region": "Кубань",
+ "grapes": [
+  "Каберне Совиньон"
+ ],
+ "alcohol": 14.0,
+ "public_rating": null,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_begildeeva_kaberne_sovinon_merlo_krasnoe_suhoe_14_287877eb6a.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Насыщенно-рубиновый",
+ "temperature": "16-18",
+ "dishes": [
+  "Овощи гриль",
+  "Сыры"
+ ],
+ "description": "Вкус: Шелковистый, с бархатистной структурой, с выраженными нотами вишни, черники, ежевики и пряных специй. Ягодно-пряный с шоколаными оттенками.",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/kuban_3a7a0211ba.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Kaberne_Sovinon2_2b33e41092.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Kaberne_Sovinon3_39f7936b80.webp",
+ "sommelier": {
+  "summary": "Красное сухое, полнотелое тело (14%); подавать при 16–18 °C; к блюдам: овощи гриль, сыры.",
+  "style": {
+   "key": "red",
+   "color": "Красное",
+   "sweetness": "сухое",
+   "sparkling": false,
+   "body": "полнотелое",
+   "body_level": 3
+  },
+  "serving": {
+   "temperature": "16–18 °C",
+   "temperature_min": 16,
+   "temperature_max": 18,
+   "tip": "Температура прохладной комнаты; в жару — 10–15 минут в холодильнике",
+   "glass": "Бордоский бокал — высокий, с большой чашей",
+   "aeration": "Дайте вину подышать 20–30 минут в декантере или бокале"
+  },
+  "alcohol": {
+   "value": 14.0,
+   "note": "Высокая крепость — лучше с сытными блюдами"
+  },
+  "pairings": [
+   {
+    "dish": "Овощи гриль",
+    "icon": "🫑",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ovoshi_grill_7539c7f339.webp",
+    "tip": "Овощи гриль, баклажаны, перец, цукини"
+   },
+   {
+    "dish": "Сыры",
+    "icon": "🧀",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+    "tip": "Твёрдые выдержанные: пармезан, гауда, чеддер, качотта"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "miroir-de-talu-merlot-cabernet-sauvignon",
+   "url": "https://vino-svoe.ru/wines/miroir-de-talu-merlot-cabernet-sauvignon",
+   "title": "Miroir De Talu Merlot Cabernet Sauvignon",
+   "manufacturer": "Chateau de Talu",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 3.75,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Miroir_De_Talu_Merlot_Cabernet_Sauvignon_477ed75989.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "cloudy-winery-krash-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/cloudy-winery-krash-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Краш. Cabernet Sauvignon",
+   "manufacturer": "Cloudy Winery",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/cloudy_winery_krash_cabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_14_7de40e47b0.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "golubitskoe-estate-noble-selection-red-blend-kaberne-sovinon-krasnoe-suhoe-136",
+   "url": "https://vino-svoe.ru/wines/golubitskoe-estate-noble-selection-red-blend-kaberne-sovinon-krasnoe-suhoe-136",
+   "title": "Noble Selection Red Blend",
+   "manufacturer": "Golubitskoe Estate",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 13.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/golubitskoe_estate_noble_selection_red_blend_kaberne_sovinon_krasnoe_suhoe_136_37a3acdce0.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "lorio-kaberne-sovinon",
+   "url": "https://vino-svoe.ru/wines/lorio-kaberne-sovinon",
+   "title": "ЛОРИО. Каберне Совиньон",
+   "manufacturer": "ЛОРИО -  семейная винодельня Логуновых",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/loriot_Kaberne_Sovinon_f3c3a66527.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "chteau-le-grand-vostock-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/chteau-le-grand-vostock-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Cabernet Sauvignon",
+   "manufacturer": "Château Le Grand Vostock",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/chteau_le_grand_vostock_cabernet_sauvignon_kaberne_sovinon_krasnoe_suhoe_14_1006ebb20a.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Cabernet Sauvignon Reserve",
+   "manufacturer": "Château Le Grand Vostock",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/chteau_le_grand_vostock_cabernet_sauvignon_reserve_kaberne_sovinon_krasnoe_suhoe_14_f13c051af7.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "shato-pino-koldun-rezerv-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/shato-pino-koldun-rezerv-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Колдун Резерв",
+   "manufacturer": "Шато Пино",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/shato_pino_krasnyy_rezerv_kaberne_sovinon_krasnoe_suhoe_14_7415f9a41b.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  },
+  {
+   "slug": "pomeste-golubitskoe-kaberne-sovinon-rezerv-krasnoe-suhoe-143",
+   "url": "https://vino-svoe.ru/wines/pomeste-golubitskoe-kaberne-sovinon-rezerv-krasnoe-suhoe-143",
+   "title": "Каберне Совиньон Резерв",
+   "manufacturer": "Golubitskoe Estate",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/pomeste_golubitskoe_kaberne_sovinon_rezerv_krasnoe_suhoe_vyderzhannoe_143_97eb57d86b.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Кубань"
+   ]
+  }
+ ]
+}

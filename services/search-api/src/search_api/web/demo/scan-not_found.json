@@ -1,29 +1,11 @@
 {
  "status": "not_found",
  "top1_confident": false,
- "reason": "low_similarity",
- "message": "Такое вино не найдено в каталоге — возможно, это одно из похожих",
+ "reason": "not_verified",
+ "message": "Данное вино отсутствует в каталоге, но вот какие аналоги вы можете найти",
+ "top1": null,
  "wine": null,
  "alternatives": [
-  {
-   "slug": "inkerman-shato-ruzh",
-   "url": "https://vino-svoe.ru/wines/inkerman-shato-ruzh",
-   "title": "Inkerman Шато Руж",
-   "manufacturer": "Инкерманский ЗМВ",
-   "category": "Красное полусухое",
-   "region": "Крым",
-   "grapes": [
-    "Каберне Совиньон",
-    "Мерло",
-    "Пино Нуар"
-   ],
-   "alcohol": 11.0,
-   "public_rating": 5.0,
-   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Ruzh_85fa6ee9ce.webp",
-   "rank": 1,
-   "confidence": 0.3378,
-   "reasons": []
-  },
   {
    "slug": "vinodelnya-begildeeva-kaberne-sovinon-krasnoe-suhoe-14",
    "url": "https://vino-svoe.ru/wines/vinodelnya-begildeeva-kaberne-sovinon-krasnoe-suhoe-14",
@@ -37,25 +19,8 @@
    "alcohol": 14.0,
    "public_rating": null,
    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_begildeeva_kaberne_sovinon_krasnoe_suhoe_14_1108f8580b.webp",
-   "rank": 2,
-   "confidence": 0.2028,
-   "reasons": []
-  },
-  {
-   "slug": "inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
-   "url": "https://vino-svoe.ru/wines/inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
-   "title": "Winemaker's Selection Саперави",
-   "manufacturer": "Инкерманский ЗМВ",
-   "category": "Красное полусладкое",
-   "region": "Крым",
-   "grapes": [
-    "Саперави"
-   ],
-   "alcohol": 12.0,
-   "public_rating": 5.0,
-   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/inkermanskiy_zmv_winemakers_selection_saperavi_igristoe_polusladkoe_krasnoe_12_b8254979b2.webp",
-   "rank": 3,
-   "confidence": 0.1557,
+   "rank": 1,
+   "confidence": 0.85,
    "reasons": []
   },
   {
@@ -71,8 +36,27 @@
    "alcohol": 12.0,
    "public_rating": 5.0,
    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/kuban_vino_kaberne_de_tamane_kaberne_sovinon_krasnoe_suhoe_125_d65b4385ed.webp",
-   "rank": 4,
-   "confidence": 0.1519,
+   "rank": 2,
+   "confidence": 0.1303,
+   "reasons": []
+  },
+  {
+   "slug": "inkerman-shato-ruzh",
+   "url": "https://vino-svoe.ru/wines/inkerman-shato-ruzh",
+   "title": "Inkerman Шато Руж",
+   "manufacturer": "Инкерманский ЗМВ",
+   "category": "Красное полусухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Мерло",
+    "Пино Нуар"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Ruzh_85fa6ee9ce.webp",
+   "rank": 3,
+   "confidence": 0.0176,
    "reasons": []
   },
   {
@@ -88,17 +72,118 @@
    "alcohol": 13.0,
    "public_rating": 4.25,
    "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Blan_beloe_polusuhoe_526e6530b9.webp",
+   "rank": 4,
+   "confidence": 0.0016,
+   "reasons": []
+  },
+  {
+   "slug": "inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
+   "url": "https://vino-svoe.ru/wines/inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
+   "title": "Winemaker's Selection Саперави",
+   "manufacturer": "Инкерманский ЗМВ",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/inkermanskiy_zmv_winemakers_selection_saperavi_igristoe_polusladkoe_krasnoe_12_b8254979b2.webp",
    "rank": 5,
-   "confidence": 0.1518,
+   "confidence": 0.0004,
+   "reasons": []
+  },
+  {
+   "slug": "vinodelnya-marchenko-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/vinodelnya-marchenko-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Каберне Совиньон",
+   "manufacturer": "Винодельня Марченко",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_marchenko_kaberne_sovinon_krasnoe_suhoe_14_387edd3954.webp",
+   "rank": 6,
+   "confidence": 0.0,
+   "reasons": []
+  },
+  {
+   "slug": "vinodelnya-begildeeva-kaberne-sovinon-merlo-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/vinodelnya-begildeeva-kaberne-sovinon-merlo-krasnoe-suhoe-14",
+   "title": "Каберне Совиньон – Мерло",
+   "manufacturer": "Винодельня Бегильдеева",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_begildeeva_kaberne_sovinon_merlo_krasnoe_suhoe_14_287877eb6a.webp",
+   "rank": 7,
+   "confidence": 0.0,
+   "reasons": []
+  },
+  {
+   "slug": "belbek-beloe-suhoe-kaberne-sovinon-krasnoe-14",
+   "url": "https://vino-svoe.ru/wines/belbek-beloe-suhoe-kaberne-sovinon-krasnoe-14",
+   "title": "Белое сухое",
+   "manufacturer": "Бельбек",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belbek_beloe_suhoe_kaberne_sovinon_krasnoe_suhoe_14_82f8b0eda2.webp",
+   "rank": 8,
+   "confidence": 0.0,
+   "reasons": []
+  },
+  {
+   "slug": "mons-albus-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/mons-albus-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Каберне Совиньон",
+   "manufacturer": "Mons Albus",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/mons_albus_kaberne_sovinon_krasnoe_suhoe_14_b012140125.webp",
+   "rank": 9,
+   "confidence": 0.0,
+   "reasons": []
+  },
+  {
+   "slug": "soyuz-vino-soyuz-vino-kaberne-sovinon-krasnoe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/soyuz-vino-soyuz-vino-kaberne-sovinon-krasnoe-suhoe-12",
+   "title": "Союз-Вино Каберне Совиньон",
+   "manufacturer": "Союз-Вино",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/soyuz_vino_soyuz_vino_kaberne_sovinon_krasnoe_suhoe_12_323dad351f.webp",
+   "rank": 10,
+   "confidence": 0.0,
    "reasons": []
   }
  ],
  "timings": {
-  "decode_ms": 120.0,
-  "encode_ms": 200.0,
+  "decode_ms": 200.0,
+  "encode_ms": 280.0,
   "search_ms": 6.0,
-  "ocr_ms": 280.0,
-  "vlm_ms": 0.0,
-  "total_ms": 606.0
+  "vlm_ms": 990.0,
+  "total_ms": 1476.0
  }
 }

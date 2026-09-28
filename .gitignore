@@ -2,19 +2,30 @@
 .venv/
 venv/
 
-# Веса моделей (SigLIP 4,3 ГБ, Qwen3-VL 8,9 ГБ, EasyOCR 94 МБ) —
-# качаются скриптами infra/fetch-model.sh, fetch-vlm.sh, fetch-ocr.sh
+# Веса моделей (SigLIP 4,3 ГБ, Qwen3-VL 8,9 ГБ) —
+# качаются скриптами infra/fetch-model.sh, fetch-vlm.sh
 models/
 
 # Тяжёлые данные: фото каталога (~1 ГБ, собираются парсером),
 # реальные фото (90 МБ, распаковываются из архива организатора), база Qdrant
 # (строится индексатором). Метаданные каталога data/catalog/catalog.jsonl — в репозитории
 data/catalog/images/
+# уменьшенные эталоны для VLM — строятся сервисом при старте
+data/catalog/vlm-refs-*/
 data/real-photos/
 data/qdrant/
 data/Датасет (1)/Реальные фото.zip
 # отклики пользователей сканера (POST /v1/feedback) — данные конкретного стенда
 data/feedback/
+# HTML-отчёты прогонов и превью к ним (~8 МБ на прогон, копии фото) —
+# пересобираются eval_runner; в репозитории остаются results.jsonl и accuracy.xlsx
+data/reports/**/report.html
+data/reports/**/thumbs/
+
+# Самописная разметка — не используется, заменена Label Studio
+tools/labeler/
+# логи сервиса, запущенного в фоне
+data/logs/
 
 # Бинарник Qdrant (86 МБ) — качается с GitHub-релиза, см. README
 infra/bin/

@@ -9,7 +9,7 @@
   "use strict";
 
   // Фото с телефона — 3024×4032 и 2–5 МБ. Сервису больше 1600 px не нужно
-  // (SigLIP смотрит 512, OCR — 1280, VLM — ~0,5 Мп), а декодирование полного
+  // (SigLIP смотрит 512, VLM — ~0,5 Мп), а декодирование полного
   // кадра было самым долгим шагом на сервере. Сжимаем на клиенте.
   const MAX_SIDE = 1600;
   const JPEG_QUALITY = 0.9;
@@ -487,16 +487,22 @@
   }
 
   // ── «Не найдено» ─────────────────────────────────────────────────────────
+  // [заголовок, подводка, заголовок списка]
+  const ANALOGS = ["Данное вино отсутствует в каталоге", "Но вот какие аналоги вы можете найти в каталоге «Своё Вино»:", "Аналоги"];
   const NOT_FOUND = {
-    low_similarity: ["Такое вино не найдено", "Похоже, этого вина пока нет в каталоге «Своё Вино». Возможно, это одно из похожих:"],
-    vlm_none: ["Такое вино не найдено", "Похоже, этого вина пока нет в каталоге «Своё Вино». Возможно, это одно из похожих:"],
-    ambiguous: ["Уточните, какое это вино", "Нашли несколько очень похожих вин — выберите своё:"],
-    empty: ["Не удалось распознать", "Попробуйте переснять: этикетка крупно, без бликов."],
+    not_verified: ANALOGS,
+    vlm_none: ANALOGS,
+    low_similarity: ANALOGS,
+    ambiguous: ["Уточните, какое это вино", "Нашли несколько очень похожих вин — выберите своё:", "Возможно, это оно"],
+    empty: ["Не удалось распознать", "Попробуйте переснять: этикетка крупно, без бликов.", "Возможно, это оно"],
   };
 
   function renderNotFound(res) {
     const alts = res.alternatives || [];
-    const [title, lead] = NOT_FOUND[res.reason] || ["Такое вино не найдено", res.message];
+    // Пустой top1 — сервис решил, что вина с фото нет в каталоге (то же, что
+    // {"slug": null} в /v1/eval/predict); иначе текст — по причине отказа
+    const texts = res.top1 === null && res.reason !== "empty" ? ANALOGS : NOT_FOUND[res.reason];
+    const [title, lead, altsTitle] = texts || [ANALOGS[0], res.message, ANALOGS[2]];
     $("#screen-result").innerHTML = `
       <div class="title-block">
         <span class="status-chip">${icon("search-x")}Нет точного совпадения</span>
@@ -506,7 +512,7 @@
       <p class="notfound-lead">${esc(lead)}</p>
       ${alts.length ? `
         <section class="section" style="padding-top:32px" aria-labelledby="alts-title">
-          <h2 class="section__title" id="alts-title">Возможно, это оно</h2>
+          <h2 class="section__title" id="alts-title">${esc(altsTitle)}</h2>
           <div class="grid-2">${alts.map((w, i) => wineItemHtml(w, "pick", i === 0 ? "Больше всего похоже" : "")).join("")}</div>
         </section>` : ""}
       <div class="stack">

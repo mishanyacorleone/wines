@@ -24,25 +24,14 @@ class Candidate(BaseModel):
     )
 
     score: float = Field(
-        description="итоговый балл: image_score + TEXT_WEIGHT * text_score; по нему выдача отсортирована"
+        description="балл векторного поиска (косинус картинок); с VLM порядок выдачи "
+        "задаёт vlm_prob, а не он"
     )
     image_score: float = Field(description="косинусное сходство картинок, [-1, 1]")
-    text_score: float = Field(
-        default=0.0,
-        description="текстовая улика, [-1, 1]: вес найденных на этикетке слов карточки "
-        "минус штраф за противоречие по цвету/сладости",
-    )
-    matched_terms: list[str] = Field(
-        default_factory=list, description="какие слова карточки нашлись на этикетке"
-    )
-    conflict_terms: list[str] = Field(
-        default_factory=list,
-        description="цвет/сладость, прочитанные на этикетке и противоречащие карточке",
-    )
     vlm_prob: float | None = Field(
         default=None,
         description="вероятность VLM, что это вино на фото; null — VLM выключен "
-        "или кандидат не попал в его пятёрку",
+        "или кандидат не попал в его выборку",
     )
     confidence: float = Field(
         description="доля уверенности внутри выдачи: без VLM — softmax по score (сумма "
@@ -56,23 +45,31 @@ class Timings(BaseModel):
     decode_ms: float = Field(description="декодирование загруженного файла")
     encode_ms: float = Field(description="инференс энкодера")
     search_ms: float = Field(description="поиск в Qdrant")
-    ocr_ms: float = Field(default=0.0, description="OCR этикетки и переранжирование")
-    vlm_ms: float = Field(default=0.0, description="выбор вина внутри пятёрки VLM")
+    vlm_ms: float = Field(default=0.0, description="выбор вина VLM и проверка выбранного")
     total_ms: float
 
 
 class SearchResponse(BaseModel):
     status: Literal["match", "not_found"] = Field(
         description="match — топ-1 можно показывать одной карточкой; not_found — "
-        "уверенности нет, пользователю предлагаются варианты из топ-5"
+        "вина нет в каталоге или уверенности нет, пользователю предлагаются аналоги"
     )
     top1_confident: bool = Field(description="уверена ли система в топ-1 (то же, что status == match)")
     reason: str = Field(
-        description="почему принято решение: confident, low_similarity (фото мало похоже "
-        "на всё в каталоге), vlm_none (VLM: ни одна из пяти не подходит), ambiguous "
-        "(кандидаты слишком близки), empty"
+        description="почему принято решение: confident (нашли), not_verified (проверка VLM: "
+        "на фото другое вино), vlm_none (VLM: ни одна карточка не подходит), ambiguous "
+        "(VLM колеблется между похожими винами), low_similarity (без VLM: фото мало похоже "
+        "на всё в каталоге), empty"
     )
-    results: list[Candidate]
+    message: str = Field(default="", description="готовый текст для пользователя")
+    top1: str | None = Field(
+        default=None,
+        description="slug топ-1 — то же, что вернёт /v1/eval/predict; для метрики. "
+        "null — вина нет в каталоге",
+    )
+    results: list[Candidate] = Field(
+        description="топ-k (по умолчанию 10) — для интерфейса и рекомендаций"
+    )
     top1_confidence: float = Field(description="confidence первого кандидата")
     top5_confidence: float = Field(description="суммарный confidence первых пяти")
     margin: float = Field(
@@ -80,13 +77,15 @@ class SearchResponse(BaseModel):
         "выдача (score, с VLM — confidence): чем больше, тем надёжнее можно "
         "показывать одну карточку без экрана вариантов"
     )
-    ocr_text: list[str] | None = Field(
-        default=None, description="строки, прочитанные с этикетки; null — OCR выключен"
-    )
     vlm_none_prob: float | None = Field(
         default=None,
-        description="вероятность VLM, что на фото нет ни одного вина из пятёрки; "
-        "null — VLM выключен. Как сигнал отказа пока слабый",
+        description="вероятность VLM, что на фото нет ни одного вина из его выборки; "
+        "null — VLM выключен. Как сигнал отказа слабый — основной verify_prob",
+    )
+    verify_prob: float | None = Field(
+        default=None,
+        description="вероятность попарной проверки VLM, что топ-1 — вино с фото; "
+        "null — VLM выключен или у топ-1 нет эталонного фото",
     )
     timings: Timings
 
@@ -94,7 +93,7 @@ class SearchResponse(BaseModel):
 class PredictResponse(BaseModel):
     """Плоский ответ под скрипт оценки кейсодержателя."""
 
-    slug: str
+    slug: str | None = Field(description="slug вина; null — вина с фото нет в каталоге")
 
 
 # ── Сканер для пользователя: карточка вина и «цифровой сомелье» ─────────────
@@ -179,12 +178,19 @@ class ScanResponse(BaseModel):
         description="match — показываем wine; not_found — показываем message и alternatives"
     )
     top1_confident: bool
-    reason: str = Field(description="confident, low_similarity, vlm_none, ambiguous, empty")
+    reason: str = Field(
+        description="confident, not_verified, vlm_none, ambiguous, low_similarity, empty — "
+        "см. SearchResponse.reason"
+    )
     message: str = Field(description="готовый текст для пользователя")
+    top1: str | None = Field(
+        default=None,
+        description="slug топ-1, как в /v1/eval/predict; null — вина нет в каталоге",
+    )
     wine: WineCard | None = Field(default=None, description="найденное вино; null при not_found")
     alternatives: list[WineSummary] = Field(
         default_factory=list,
-        description="при not_found — топ-5 вариантов; при match — остальные из топ-5 "
+        description="при not_found — топ-10 аналогов; при match — остальные из топ-10 "
         "для кнопки «Не то вино?»",
     )
     timings: Timings
@@ -223,7 +229,6 @@ class HealthResponse(BaseModel):
     collection: str
     indexed_points: int
     vector_size: int
-    ocr_enabled: bool
     vlm_enabled: bool
     sommelier_wines: int = Field(default=0, description="вин в памяти сомелье")
     pairing_data: bool = Field(

@@ -3,6 +3,7 @@
  "top1_confident": true,
  "reason": "confident",
  "message": "Нашли ваше вино",
+ "top1": "gevyurcztraminer-oranzh",
  "wine": {
   "slug": "gevyurcztraminer-oranzh",
   "url": "https://vino-svoe.ru/wines/gevyurcztraminer-oranzh",
@@ -308,11 +309,10 @@
   }
  ],
  "timings": {
-  "decode_ms": 120.0,
-  "encode_ms": 200.0,
+  "decode_ms": 200.0,
+  "encode_ms": 280.0,
   "search_ms": 6.0,
-  "ocr_ms": 280.0,
-  "vlm_ms": 0.0,
-  "total_ms": 606.0
+  "vlm_ms": 990.0,
+  "total_ms": 1476.0
  }
 }

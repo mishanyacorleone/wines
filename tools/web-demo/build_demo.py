@@ -5,7 +5,7 @@
 Пишет в services/search-api/src/search_api/web/demo/ ответы в формате
 /v1/scan, /v1/wines/{slug}, /v1/pairing — собранные тем же сомелье и тем же
 правилом решения, что и в сервисе, по catalog.jsonl и реальному прогону
-(data/reports/ocr/results.jsonl). Страница: /app/?demo=match или ?demo=not_found.
+(data/reports/service-vlm5-top10/results.jsonl). Страница: /app/?demo=match или ?demo=not_found.
 
 Зависимостей, кроме стандартной библиотеки, нет: модули сомелье и решения
 не тянут FastAPI и torch.
@@ -77,8 +77,8 @@ def main() -> int:
     _media = sommelier_mod.SiteMedia.load()
     sommelier = sommelier_mod.Sommelier(rows, _media)
     OUT.mkdir(parents=True, exist_ok=True)
-    timings = {"decode_ms": 120.0, "encode_ms": 200.0, "search_ms": 6.0, "ocr_ms": 280.0,
-               "vlm_ms": 0.0, "total_ms": 606.0}
+    timings = {"decode_ms": 200.0, "encode_ms": 280.0, "search_ms": 6.0,
+               "vlm_ms": 990.0, "total_ms": 1476.0}
 
     def write(name: str, data) -> None:
         (OUT / name).write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -89,27 +89,29 @@ def main() -> int:
     alternatives = [_summary(w, rank=i + 2) for i, w in enumerate(sommelier.similar(match, limit=4))]
     write("scan-match.json", {
         "status": "match", "top1_confident": True, "reason": "confident",
-        "message": "Нашли ваше вино", "wine": card, "alternatives": alternatives, "timings": timings,
+        "message": "Нашли ваше вино", "top1": MATCH_SLUG, "wine": card,
+        "alternatives": alternatives, "timings": timings,
     })
     write("wine.json", card)
 
     # «Не найдено»: реальная выдача сервиса по фото вина, которого нет в каталоге
-    results = ROOT / "data" / "reports" / "ocr" / "results.jsonl"
+    results = ROOT / "data" / "reports" / "service-vlm5-top10" / "results.jsonl"
     result = next(
         json.loads(l) for l in results.read_text(encoding="utf-8").splitlines()
         if json.loads(l)["filename"] == NOT_FOUND_PHOTO
     )
     verdict = verdict_mod.decide(
-        result["results"][:5], vlm_none_prob=result.get("vlm_none_prob"),
-        thresholds=verdict_mod.Thresholds(),
+        result["results"], vlm_none_prob=result.get("vlm_none_prob"),
+        verify_prob=result.get("verify_prob"), thresholds=verdict_mod.Thresholds(),
     )
     shortlist = [
         _summary(sommelier.get(c["slug"]) or c, rank=c["rank"], confidence=round(c["confidence"], 4))
-        for c in result["results"][:5]
+        for c in result["results"]
     ]
     write("scan-not_found.json", {
         "status": verdict.status, "top1_confident": verdict.top1_confident, "reason": verdict.reason,
-        "message": verdict.message, "wine": None, "alternatives": shortlist, "timings": timings,
+        "message": verdict.message, "top1": None if verdict.absent else result["results"][0]["slug"],
+        "wine": None, "alternatives": shortlist, "timings": timings,
     })
     for item in shortlist + alternatives + card["similar"]:
         write(f"wine-{item['slug']}.json", _card(sommelier, sommelier.get(item["slug"])))

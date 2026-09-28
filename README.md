@@ -8,14 +8,14 @@
 один новый вектор в индексе, без переобучения.
 
 ```
-фото → SigLIP 2 → вектор → Qdrant топ-20 → OCR-переранжирование → [VLM выбирает из топ-5] → slug
+фото → SigLIP 2 → вектор → Qdrant топ-10 → Qwen3-VL выбирает вино из первых 5 → Qwen3-VL проверяет выбранное
+     → /v1/eval/predict: slug топ-1   |   /v1/scan: «нашли» или «нет в каталоге — вот аналоги» + топ-10
 ```
 
-| Конфигурация | top-1 (n=53) | top-5 | p95 ответа | VRAM |
+| Конфигурация | top-1 (n=53) | «нет в каталоге» у вин вне каталога | p95 ответа | VRAM |
 |---|---|---|---|---|
-| только картинка | 77,4% | 100% | 0,4 с | ~1,2 ГБ |
-| картинка + OCR (**по умолчанию**) | 88,7% | 100% | 0,8 с | ~3,2 ГБ |
-| картинка + VLM, без OCR (`WINE_VLM_ENABLED=1`, `WINE_OCR_ENABLED=0`) | **96,2%** | 100% | 1,7 с | ~10 ГБ |
+| только картинка (`WINE_VLM_ENABLED=0`) | 77,4% | порог по баллу: лучший разделяет 61 из 74 | 0,4 с | ~1,2 ГБ |
+| **картинка + VLM (топ-5) + проверка (по умолчанию)** | **96,2%** | **30 из 33**, верный скрыт у 5 из 62 | 1,6 с (max 1,6) | ~10,3 ГБ |
 
 Точность — по ручной разметке 100 реальных фото (53 размечены уверенно, 33 —
 вина нет в каталоге). SLA организатора — 3 с. Все прогоны —
@@ -45,8 +45,8 @@ data/                       ТЗ, датасет организатора, ра�
 | Что | Размер | Как получить |
 |---|---|---|
 | `models/siglip2-so400m-patch16-512` | 4,3 ГБ | `./infra/fetch-model.sh google/siglip2-so400m-patch16-512` |
-| `models/easyocr` | 94 МБ | `./infra/fetch-ocr.sh` |
-| `models/Qwen3-VL-4B-Instruct` | 8,9 ГБ | `./infra/fetch-vlm.sh` — только если включаете VLM |
+| `models/Qwen3-VL-4B-Instruct` | 8,9 ГБ | `./infra/fetch-vlm.sh` |
+| `data/catalog/vlm-refs-*/` | ~0,1 ГБ | уменьшенные эталоны для VLM — сервис строит сам при старте |
 | `infra/bin/qdrant` | 86 МБ | бинарник Qdrant 1.19.1, см. ниже |
 | `data/catalog/images/` | ~1 ГБ | парсер каталога (шаг 2 запуска), `catalog.jsonl` уже в репозитории |
 | `data/Датасет (1)/Реальные фото.zip`, `data/real-photos/` | 94 МБ | архив организатора; распаковать в `data/real-photos/` |
@@ -64,8 +64,7 @@ python3.12 -m venv .venv
                       -r tools/eval-runner/requirements.txt
 
 ./infra/fetch-model.sh google/siglip2-so400m-patch16-512
-./infra/fetch-ocr.sh
-./infra/fetch-vlm.sh              # опционально, для WINE_VLM_ENABLED=1
+./infra/fetch-vlm.sh
 
 # Qdrant без Docker
 mkdir -p infra/bin && curl -L https://github.com/qdrant/qdrant/releases/download/v1.19.1/qdrant-x86_64-unknown-linux-gnu.tar.gz \
@@ -77,9 +76,9 @@ cp .env.example .env              # и поправить под себя
 Веса скачиваются в папку проекта, а не в `~/.cache`, через curl с докачкой:
 штатный загрузчик HuggingFace на обрывах начинает файл заново.
 
-`requirements.txt` сервиса поиска закрепляет `torchvision==0.23.0`: без этого
-`pip install easyocr` тянет свежий torchvision, а тот поднимает torch до версии
-с CUDA 13 и ломает стек.
+`requirements.txt` сервиса поиска закрепляет `torchvision==0.23.0` (нужен
+процессору Qwen3-VL): свежий torchvision поднимает torch до версии с CUDA 13
+и ломает стек.
 
 ## Запуск
 
@@ -111,7 +110,7 @@ PYTHONPATH=libs/wine-embeddings/src:services/search-api/src .venv/bin/python -m 
   камеру только на `https://` или `localhost`; на `http://<ip>` и при отказе в
   доступе страница скажет об этом и откроет выбор файла.
 
-Чтобы открыть с телефона, запустите сервис с `WINE_API_HOST=0.0.0.0`.
+С телефона — по IP машины в той же сети (`WINE_API_HOST=0.0.0.0`, так в `.env.example`).
 Лупа в шапке ищет вино по каталогу (`GET /v1/catalog/search`) и даёт ссылку
 на поиск по всему сайту (`vino-svoe.ru/search-result`).
 
@@ -127,8 +126,8 @@ python -m http.server 8765 --directory services/search-api/src/search_api/web
 
 ```bash
 curl --noproxy '*' http://127.0.0.1:8080/health
-curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/search?top_k=5' -F image=@photo.jpg
-curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/eval/predict' -F image=@photo.jpg   # {"slug": "..."}
+curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/search' -F image=@photo.jpg          # top1 + топ-10 + status
+curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/eval/predict' -F image=@photo.jpg   # {"slug": "..."} или {"slug": null}
 curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/scan' -F image=@photo.jpg          # карточка + сомелье
 curl --noproxy '*' 'http://127.0.0.1:8080/v1/wines/vermentino-viognier-2022'
 curl --noproxy '*' 'http://127.0.0.1:8080/v1/pairing?dish=Сыры&style=red'
@@ -138,23 +137,27 @@ curl --noproxy '*' 'http://127.0.0.1:8080/v1/pairing?dish=Сыры&style=red'
 
 | Метод | Что отдаёт |
 |---|---|
-| `POST /v1/scan` | `status` (`match` / `not_found`), `top1_confident`, `reason`, готовый `message`; при `match` — `wine` (карточка + советы сомелье + похожие вина) и остальные из топ-5 в `alternatives`; при `not_found` — топ-5 в `alternatives` |
+| `POST /v1/scan` | `status` (`match` / `not_found`), `top1_confident`, `reason`, готовый `message`; при `match` — `wine` (карточка + советы сомелье + похожие вина) и остальные из топ-10 в `alternatives`; при `not_found` — «Ваше вино в каталоге не найдено, но вот какие аналоги вы можете найти» и топ-10 в `alternatives` |
 | `GET /v1/wines/{slug}` | карточка с советами — когда пользователь выбрал вариант сам |
 | `GET /v1/pairing?dish=&style=` | вина к блюду (сначала точное блюдо, затем то же семейство, внутри — по народному рейтингу) |
 | `GET /v1/pairing/dishes` | все блюда каталога с числом вин |
 | `GET /v1/catalog/search?q=` | поиск вина по названию, производителю, сорту, региону |
 | `POST /v1/feedback` | «да, это оно» / «выбрал другое» / «моего вина нет» → `data/feedback/feedback.jsonl` |
 
-`/v1/search` тоже отдаёт `status`, `top1_confident` и `reason`; контракт
-`/v1/eval/predict` не менялся.
+`/v1/search` отдаёт `top1` (тот же slug, что `/v1/eval/predict` — для метрики),
+`results` (топ-10 — для интерфейса), `status`, `reason`, `message`,
+`verify_prob`; контракт `/v1/eval/predict` не менялся.
 
-**Решение «одна карточка или варианты»** (`search_api/verdict.py`): карточка
-показывается, только если балл картинки топ-1 ≥ 0,76 и (без VLM) отрыв от
-второго ≥ 0,02 или (с VLM) его вероятность ≥ 0,8 и вероятность «ни одна не
-подходит» < 0,5. Иначе — «такое вино не найдено» и топ-5. На 99 размеченных
-фото: без VLM показано 60 карточек, верных 48 (80%), «не найдено» получили
-22 из 33 вин вне каталога; с VLM — 65 / 55 (85%) / 25 из 33. Пороги подобраны
-на той же выборке — это подгонка, а не независимый замер.
+**Решение «нашли / нет в каталоге»** (`search_api/verdict.py`): VLM выбирает
+вино среди первых 5 из топ-10, затем отдельно проверяет его — «одно и то же
+вино?» по этикетке, тексту на бутылке, форме бутылки и цвету вина. Вероятность
+«Да» < 0,3 → «нет в каталоге» (`reason=not_verified`); вероятность выбора
+< 0,8 → «уточните, какое это вино» (`ambiguous`). На 99 размеченных фото:
+«нет в каталоге» у 30 из 33 вин вне каталога, верный ответ скрыт у 5 из 62
+(два — карточка на сайте расходится с бутылкой: «Красное сухое» у белого рислинга,
+прежний дизайн этикетки у Red Blend) и ещё у 2 показан экран «уточните» с верным
+вином первым. Пороги подобраны на той же выборке
+— это подгонка, а не независимый замер.
 
 Фото блюд, регионов и сортов, как на сайте, берутся из
 `search_api/site_media.json`; пересобрать его после пополнения каталога —
@@ -181,10 +184,10 @@ PYTHONPATH=tools/eval-runner/src .venv/bin/python -m eval_runner.excel
 # Импорт новой разметки из Label Studio (CSV-экспорт)
 PYTHONPATH=tools/eval-runner/src .venv/bin/python -m eval_runner.labels data/project-...csv
 
-# VLM на готовом прогоне, без перезапуска сервиса
+# VLM на готовом прогоне (только картинка, --top-k ≥ 10), без сервиса
 PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/src \
-  .venv/bin/python -m eval_runner.vlm_offline data/reports/results.jsonl \
-  --out data/reports/vlm/results.jsonl --candidate-images \
+  .venv/bin/python -m eval_runner.vlm_offline data/reports/image-top20/results.jsonl \
+  --out data/reports/vlm/results.jsonl --top-k 10 --candidate-images --verify \
   --query-max-pixels 524288 --candidate-max-pixels 131072
 ```
 
@@ -203,41 +206,43 @@ PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/sr
 | `WINE_QDRANT_URL` | `http://localhost:6333` | адрес Qdrant |
 | `WINE_COLLECTION` | `wines` | имя коллекции |
 | `WINE_CATALOG_DIR` | `./data/catalog` | каталог: индексатор берёт оттуда фото, VLM — эталонные фото кандидатов |
-| `WINE_API_HOST` / `WINE_API_PORT` | `127.0.0.1` / `8080` | адрес сервиса (8080 — порт из скрипта оценки) |
-| `WINE_OCR_ENABLED` | `1` | OCR-переранжирование; `0` — выключить |
-| `WINE_OCR_MODELS_DIR` | `./models/easyocr` | веса EasyOCR |
-| `WINE_OCR_MAX_SIDE` | `1280` | до какой стороны уменьшать фото перед OCR |
-| `WINE_OCR_MIN_CONFIDENCE` | `0.3` | порог уверенности строки OCR |
-| `WINE_RERANK_K` | `20` | сколько кандидатов картинки переранжирует текст |
-| `WINE_TEXT_WEIGHT` | `0.15` | вес текста: `score = cos + w · text_score` |
-| `WINE_VLM_ENABLED` | `0` | VLM-реранкер (Qwen3-VL-4B) выбирает вино внутри топ-5; `1` — включить |
+| `WINE_API_HOST` / `WINE_API_PORT` | `127.0.0.1` / `8080` | адрес сервиса (8080 — порт из скрипта оценки); `0.0.0.0` — доступ с телефона |
+| `WINE_TOP_K` | `10` | сколько вин отдают `/v1/search` и `/v1/scan` |
+| `WINE_VLM_ENABLED` | `1` | VLM (Qwen3-VL-4B): выбор вина и проверка «нет в каталоге»; `0` — только картинка |
 | `WINE_VLM_MODEL_DIR` | `./models/Qwen3-VL-4B-Instruct` | веса VLM |
-| `WINE_VLM_TOP_K` | `5` | из скольких кандидатов выбирает VLM (1–9) |
+| `WINE_VLM_TOP_K` | `5` | из скольких кандидатов выбирает VLM (1–9, метки — цифры); из 10 — медленнее и на 2 фото хуже |
 | `WINE_VLM_CANDIDATE_IMAGES` | `1` | показывать VLM эталонные фото кандидатов, а не только текст карточек |
 | `WINE_VLM_QUERY_MAX_PIXELS` | `524288` | площадь, до которой уменьшается фото пользователя для VLM |
-| `WINE_VLM_CANDIDATE_MAX_PIXELS` | `131072` | площадь эталонного фото кандидата |
-| `WINE_ACCEPT_MIN_IMAGE_SCORE` | `0.76` | ниже — «вино не найдено» |
+| `WINE_VLM_CANDIDATE_MAX_PIXELS` | `131072` | площадь эталонного фото кандидата (и имя папки кэша `vlm-refs-*`) |
+| `WINE_ACCEPT_MIN_VERIFY_PROB` | `0.3` | с VLM: проверка топ-1 ниже — «нет в каталоге» |
+| `WINE_ACCEPT_MAX_VLM_NONE_PROB` | `0.5` | с VLM: вероятность «ни одна не подходит» выше — «нет в каталоге» |
+| `WINE_ACCEPT_MIN_VLM_PROB` | `0.8` | с VLM: вероятность выбора топ-1 ниже — «уточните, какое это вино» |
+| `WINE_PREDICT_EMPTY_IF_ABSENT` | `1` | вина нет в каталоге → `{"slug": null}` в `/v1/eval/predict` и `top1: null`; `0` — ближайшее вино |
+| `WINE_ACCEPT_MIN_IMAGE_SCORE` | `0.76` | без VLM: балл картинки ниже — «нет в каталоге» |
 | `WINE_ACCEPT_MIN_MARGIN` | `0.02` | без VLM: минимальный отрыв топ-1 от топ-2 |
-| `WINE_ACCEPT_MIN_VLM_PROB` | `0.8` | с VLM: минимальная вероятность топ-1 |
-| `WINE_ACCEPT_MAX_VLM_NONE_PROB` | `0.5` | с VLM: выше — «вино не найдено» |
 | `WINE_WEB_ENABLED` | `1` | мобильный сканер на `/app/` |
 | `WINE_FEEDBACK_DIR` | `./data/feedback` | куда писать отклики пользователей |
 | `WINE_SITE_IMAGE_API` | ресайз-API vino-svoe.ru | фото бутылки, если нет локального PNG каталога |
 | `SCRAPER_*` | см. `services/catalog-scraper/README.md` | параметры сбора каталога |
 
-С VLM OCR перестаёт давать прирост точности (96,2% с ним и без), поэтому
-рекомендуемая связка — `WINE_VLM_ENABLED=1` + `WINE_OCR_ENABLED=0`.
+OCR (EasyOCR) из пайплайна удалён 28.09.2026: с VLM он не давал прироста
+точности, а стоил 0,35 с и 2 ГБ VRAM.
 
 ## Ограничения
 
 - **Точность измерена на 53 уверенно размеченных фото** — выборка маленькая,
   1 фото ≈ 2 п.п., разница в 1–2 фото между настройками — шум. Ground truth
   организатор не выдаёт, разметка ручная.
-- **Отказ «нет в каталоге» — только в пользовательских ручках.** `/v1/scan` и
-  поле `status` в `/v1/search` говорят «не найдено» для 22–25 из 33 вин вне
-  каталога; `/v1/eval/predict` по-прежнему всегда возвращает ближайшее вино —
-  какой ответ ждёт организатор в этом случае, неизвестно.
-- **Вероятность VLM не откалибрована**: почти всегда 0,9–1,0, в том числе на ошибках.
+- **Вина нет в каталоге → `/v1/eval/predict` отдаёт `{"slug": null}`**, а
+  `/v1/search` и `/v1/scan` — `top1: null` (интерфейс показывает «Данное вино
+  отсутствует в каталоге» и аналоги). Так для 30 из 33 вин вне каталога; цена —
+  5 из 62 верных ответов тоже уходят в null. По разметке 100 фото, если для вин
+  вне каталога верный ответ — null: 87 из 99 верных против 62 из 99 без этого. `WINE_PREDICT_EMPTY_IF_ABSENT=0` —
+  всегда отдавать ближайшее вино.
+- **Вероятность выбора VLM не откалибрована**: почти всегда 0,9–1,0, в том числе
+  на ошибках. «Нет в каталоге» решает отдельная проверка, а не она.
+- **VLM выбирает из топ-5, а не из топ-10**: из десяти было 92,5% и до 3,7 с —
+  лишние кандидаты путают вина одной линейки. Выдача наружу — топ-10.
 - **25 групп каталожных фото байт-идентичны** (50 вин): одна и та же картинка
   на разные slug — различить их по изображению невозможно.
 - **71 slug из CSV-дампа отсутствует на сайте** (страницы отдают 404), фото для

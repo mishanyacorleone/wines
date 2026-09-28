@@ -1,7 +1,7 @@
 """Точность прогона по ручной разметке.
 
     PYTHONPATH=tools/eval-runner/src .venv/bin/python -m eval_runner.score \\
-        data/reports/image-only/results.jsonl data/reports/ocr/results.jsonl
+        data/reports/image-top20/results.jsonl data/reports/service-vlm5-top10/results.jsonl
 
 Метрики считаются на двух наборах:
   - «уверенные» — только фото, где разметчик уверен в ответе;
@@ -101,6 +101,37 @@ def absent_separation(results_path: Path, labels: dict[str, Label]) -> str:
     )
 
 
+def not_found_quality(results_path: Path, labels: dict[str, Label]) -> str:
+    """Как работает решение сервиса «вина нет в каталоге» (поле status).
+
+    Три числа: сколько вин вне каталога сервис честно назвал ненайденными;
+    сколько верных ответов он зря спрятал за «не найдено»; сколько неверных
+    ответов отсеял. Прогоны без поля status (старые) пропускаются.
+    """
+    counts = {"absent": [0, 0], "correct": [0, 0], "wrong": [0, 0]}
+    with results_path.open(encoding="utf-8") as file:
+        for line in file:
+            result = json.loads(line)
+            label = labels.get(result["filename"])
+            if label is None or not result.get("status") or not result.get("results"):
+                continue
+            if label.status == ABSENT:
+                kind = "absent"
+            elif label.status in (SURE, UNSURE):
+                kind = "correct" if result["results"][0]["slug"] in label.slugs else "wrong"
+            else:
+                continue
+            counts[kind][0] += result["status"] == "not_found"
+            counts[kind][1] += 1
+    if not counts["absent"][1]:
+        return ""
+    (a, na), (c, nc), (w, nw) = counts["absent"], counts["correct"], counts["wrong"]
+    return (
+        f"  «не найдено»: вина вне каталога {a}/{na}, ложный отказ у верных ответов {c}/{nc}, "
+        f"отсеяно неверных ответов {w}/{nw}"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Точность прогонов по ручной разметке")
     parser.add_argument("results", type=Path, nargs="+", help="results.jsonl прогонов")
@@ -114,9 +145,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {'набор':<14}{header}")
         for name, statuses in (("уверенные", {SURE}), ("+ не уверен", {SURE, UNSURE})):
             print(f"  {name:<14}{score(results_path, labels, statuses).row()}")
-        separation = absent_separation(results_path, labels)
-        if separation:
-            print(separation)
+        for extra in (absent_separation(results_path, labels), not_found_quality(results_path, labels)):
+            if extra:
+                print(extra)
     return 0
 
 

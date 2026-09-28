@@ -34,11 +34,9 @@ from .schemas import (
     WineCard,
     WineSummary,
 )
-from .ocr import LabelReader
 from .search import InvalidImageError, SearchResult, WineSearcher
 from .sommelier import SiteMedia, Sommelier, dish_icon
-from .text_match import TextMatcher
-from .verdict import Thresholds, decide
+from .verdict import Thresholds, Verdict, decide
 from .vlm import VlmReranker
 
 logger = logging.getLogger(__name__)
@@ -65,21 +63,21 @@ async def lifespan(app: FastAPI):
     _state["client"] = client
     payloads = _load_payloads(client)
     _state["sommelier"] = _build_sommelier(payloads)
-    reader, matcher = _build_ocr(payloads, gpu=encoder.device != "cpu")
+    vlm = _build_vlm(encoder.device)
     _state["searcher"] = WineSearcher(
         encoder,
         client,
         api_settings.collection,
-        reader=reader,
-        matcher=matcher,
-        rerank_k=api_settings.rerank_k,
-        text_weight=api_settings.text_weight,
-        vlm=_build_vlm(encoder.device),
+        vlm=vlm,
         vlm_top_k=api_settings.vlm_top_k,
     )
+    if vlm is not None:
+        image_paths = [p["image_path"] for p in payloads if p.get("image_path")]
+        threading.Thread(
+            target=vlm.warm_reference_cache, args=(image_paths,), name="vlm-refs", daemon=True
+        ).start()
     _warmup(_state["searcher"])  # type: ignore[arg-type]
-    logger.info("Сервис готов: %s, OCR %s, VLM %s", encoder.settings.model_id,
-                "включён" if reader else "выключен",
+    logger.info("Сервис готов: %s, VLM %s", encoder.settings.model_id,
                 "включён" if api_settings.vlm_enabled else "выключен")
     yield
     client.close()
@@ -88,7 +86,7 @@ async def lifespan(app: FastAPI):
 def _warmup(searcher: WineSearcher) -> None:
     """Холостой поиск на старте.
 
-    Первый проход через CUDA-ядра энкодера, OCR и VLM и первый запрос к Qdrant
+    Первый проход через CUDA-ядра энкодера и VLM и первый запрос к Qdrant
     в разы медленнее следующих: без прогрева первый ответ занимал 3,4 с при
     SLA 3 с, и платил бы за это первый запрос организатора.
     """
@@ -98,7 +96,7 @@ def _warmup(searcher: WineSearcher) -> None:
 
 
 def _load_payloads(client: QdrantClient) -> list[dict]:
-    """Все payload коллекции — для словаря OCR и для сомелье.
+    """Все payload коллекции — для сомелье.
 
     Берутся из Qdrant, а не из файлов каталога: API не должен знать, где лежит
     каталог, и индекс остаётся единственным источником истины о том, какие
@@ -128,23 +126,6 @@ def _build_sommelier(payloads: list[dict]) -> Sommelier:
     return sommelier
 
 
-def _build_ocr(payloads: list[dict], *, gpu: bool) -> tuple[LabelReader | None, TextMatcher | None]:
-    """OCR и словарь каталога (веса слов по редкости) для переранжирования."""
-    if not api_settings.ocr_enabled:
-        return None, None
-
-    matcher = TextMatcher(payloads)
-
-    reader = LabelReader(
-        api_settings.ocr_models_dir,
-        gpu=gpu,
-        max_side=api_settings.ocr_max_side,
-        min_confidence=api_settings.ocr_min_confidence,
-    )
-    logger.info("Словарь OCR: %d слов по %d винам", len(matcher), len(payloads))
-    return reader, matcher
-
-
 def _build_vlm(device: str) -> VlmReranker | None:
     """VLM-реранкер, если включён в настройках.
 
@@ -155,8 +136,8 @@ def _build_vlm(device: str) -> VlmReranker | None:
         return None
     if not (api_settings.vlm_model_dir / "config.json").exists():
         raise RuntimeError(
-            f"WINE_VLM_ENABLED=1, но весов нет в {api_settings.vlm_model_dir}: "
-            "скачайте их infra/fetch-vlm.sh"
+            f"VLM включён, но весов нет в {api_settings.vlm_model_dir}: "
+            "скачайте их infra/fetch-vlm.sh (или WINE_VLM_ENABLED=0 — только картинка)"
         )
     return VlmReranker(
         api_settings.vlm_model_dir,
@@ -171,7 +152,7 @@ def _build_vlm(device: str) -> VlmReranker | None:
 app = FastAPI(
     title="Сканер вин «Своё Вино»",
     description="Поиск карточки вина по фотографии этикетки.",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -185,10 +166,11 @@ if _CATALOG_IMAGES.is_dir():
     app.mount("/catalog-images", StaticFiles(directory=_CATALOG_IMAGES), name="catalog-images")
 
 _THRESHOLDS = Thresholds(
+    min_verify_prob=api_settings.accept_min_verify_prob,
+    max_vlm_none_prob=api_settings.accept_max_vlm_none_prob,
+    min_vlm_prob=api_settings.accept_min_vlm_prob,
     min_image_score=api_settings.accept_min_image_score,
     min_margin=api_settings.accept_min_margin,
-    min_vlm_prob=api_settings.accept_min_vlm_prob,
-    max_vlm_none_prob=api_settings.accept_max_vlm_none_prob,
 )
 _feedback_lock = threading.Lock()
 
@@ -223,6 +205,15 @@ def _run_search(raw: bytes, top_k: int) -> SearchResult:
         raise HTTPException(status_code=400, detail=f"Не изображение: {exc}") from exc
 
 
+def _decide(result: SearchResult) -> Verdict:
+    return decide(
+        result.candidates,
+        vlm_none_prob=result.vlm_none_prob,
+        verify_prob=result.verify_prob,
+        thresholds=_THRESHOLDS,
+    )
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     encoder = _state["encoder"]
@@ -235,7 +226,6 @@ def health() -> HealthResponse:
         collection=api_settings.collection,
         indexed_points=info.points_count or 0,
         vector_size=info.config.params.vectors.size,
-        ocr_enabled=_searcher().ocr_enabled,
         vlm_enabled=_searcher().vlm_enabled,
         sommelier_wines=len(_sommelier()),
         pairing_data=_sommelier().has_pairing_data,
@@ -256,6 +246,8 @@ async def search(
 
     Основная ручка для анализа: отдаёт не один ответ, а всю выдачу, чтобы
     было видно, что именно вытаскивает модель и насколько она уверена.
+    `top1` — тот же ответ, что вернёт /v1/eval/predict (для метрики; null —
+    вина нет в каталоге); `results` — весь топ-k (для интерфейса и рекомендаций).
     """
     top_k = min(top_k, api_settings.max_top_k)
     raw = await _read_upload(image)
@@ -265,18 +257,20 @@ async def search(
     confidences = [c.confidence for c in candidates]
     # margin — по тому же сигналу, что задал порядок: с VLM score не монотонен
     ranking = confidences if result.vlm_none_prob is not None else [c.score for c in candidates]
-    verdict = decide(result.candidates, vlm_none_prob=result.vlm_none_prob, thresholds=_THRESHOLDS)
+    verdict = _decide(result)
 
     return SearchResponse(
         status=verdict.status,
         top1_confident=verdict.top1_confident,
         reason=verdict.reason,
+        message=verdict.message,
+        top1=_top1(result, verdict),
         results=candidates,
         top1_confidence=confidences[0] if confidences else 0.0,
         top5_confidence=sum(confidences[:5]),
         margin=(ranking[0] - ranking[1]) if len(ranking) > 1 else 0.0,
-        ocr_text=result.ocr_text,
         vlm_none_prob=result.vlm_none_prob,
+        verify_prob=result.verify_prob,
         timings=_timings(result),
     )
 
@@ -285,13 +279,13 @@ async def search(
 async def scan(image: UploadFile = File(..., description="фотография этикетки")) -> ScanResponse:
     """Ручка мобильного сканера: решение + готовая карточка с советами сомелье.
 
-    Уверены в топ-1 — отдаём его карточку, остальные из пятёрки идут в
-    «Не то вино?». Не уверены — честно говорим «не найдено» и предлагаем топ-5:
-    выбрать своё вино из пяти быстрее, чем переснимать.
+    Уверены в топ-1 — отдаём его карточку, остальные из топ-10 идут в
+    «Не то вино?». Вина нет в каталоге — честно говорим об этом и предлагаем
+    топ-10 как аналоги: самые похожие вина каталога.
     """
     raw = await _read_upload(image)
-    result = _run_search(raw, 5)
-    verdict = decide(result.candidates, vlm_none_prob=result.vlm_none_prob, thresholds=_THRESHOLDS)
+    result = _run_search(raw, api_settings.default_top_k)
+    verdict = _decide(result)
 
     shortlist = [
         _wine_summary(c, rank=c["rank"], confidence=round(c["confidence"], 4))
@@ -308,6 +302,7 @@ async def scan(image: UploadFile = File(..., description="фотография �
         top1_confident=verdict.top1_confident,
         reason=verdict.reason,
         message=verdict.message,
+        top1=_top1(result, verdict),
         wine=wine,
         alternatives=shortlist,
         timings=_timings(result),
@@ -369,12 +364,24 @@ def feedback(body: FeedbackRequest) -> FeedbackResponse:
 
 @app.post("/v1/eval/predict", response_model=PredictResponse)
 async def predict(image: UploadFile = File(...)) -> PredictResponse:
-    """Контракт скрипта оценки кейсодержателя: плоский {"slug": "..."}."""
+    """Контракт скрипта оценки кейсодержателя: плоский {"slug": "..."}.
+
+    Вина с фото нет в каталоге — {"slug": null}: скрипт организатора пишет его
+    в predictions.jsonl как predicted_slug = null. Решение владельца проекта
+    (28.09.2026); вернуть ближайшее вино — WINE_PREDICT_EMPTY_IF_ABSENT=0.
+    """
     raw = await _read_upload(image)
     result = _run_search(raw, 1)
+    return PredictResponse(slug=_top1(result, _decide(result)))
+
+
+def _top1(result: SearchResult, verdict: Verdict) -> str | None:
+    """Ответ для метрики: slug топ-1 или None, если вина нет в каталоге."""
     if not result.candidates:
-        raise HTTPException(status_code=404, detail="Ничего не найдено")
-    return PredictResponse(slug=result.candidates[0]["slug"])
+        return None
+    if verdict.absent and api_settings.predict_empty_if_absent:
+        return None
+    return result.candidates[0]["slug"]
 
 
 def _candidate_fields(candidate: dict) -> dict:
@@ -388,7 +395,6 @@ def _timings(result: SearchResult) -> Timings:
         decode_ms=round(result.decode_ms, 2),
         encode_ms=round(result.encode_ms, 2),
         search_ms=round(result.search_ms, 2),
-        ocr_ms=round(result.ocr_ms, 2),
         vlm_ms=round(result.vlm_ms, 2),
         total_ms=round(result.total_ms, 2),
     )
