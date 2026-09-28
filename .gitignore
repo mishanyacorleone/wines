@@ -10,6 +10,9 @@ models/
 # реальные фото (90 МБ, распаковываются из архива организатора), база Qdrant
 # (строится индексатором). Метаданные каталога data/catalog/catalog.jsonl — в репозитории
 data/catalog/images/
+# кэш sitemap и список ошибок парсера — пересоздаются при каждом сборе каталога
+data/catalog/wines-sitemap.xml
+data/catalog/failures.jsonl
 # уменьшенные эталоны для VLM — строятся сервисом при старте
 data/catalog/vlm-refs-*/
 data/real-photos/
@@ -42,3 +45,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+
+# Мусор ОС, редакторов и фоновых запусков
+.DS_Store
+Thumbs.db
+*.swp
+*.log
+nohup.out
+.ipynb_checkpoints/

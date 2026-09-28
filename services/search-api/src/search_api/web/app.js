@@ -321,6 +321,7 @@
       ${tailHtml(wine)}`;
     $("#screen-result").dataset.alts = JSON.stringify(res.alternatives || []);
     bindCard();
+    updateSliders();
   }
 
   function renderPicked(wine) {
@@ -330,58 +331,89 @@
       : "";
     $("#screen-result").innerHTML = `${back}${cardHtml(wine)}${sommelierHtml(wine)}${tailHtml(wine)}`;
     bindCard();
+    updateSliders();
     window.scrollTo(0, 0);
   }
 
   function cardHtml(w, statusHtml = "") {
     const style = w.sommelier?.style?.key || "white";
     const colorLine = [w.category, w.color].filter(Boolean);
+    // Герой карточки, как на сайте. Телефон: одна колонка — заголовок, бутылка,
+    // факты, фото винограда, плашки. Широкий экран: слева карточка с заголовком
+    // и фактами, по центру бутылка поверх стыка, справа фото винограда с
+    // плашками поверх. Порядок на телефоне задаёт CSS (order), разметка одна.
     return `
-      <div class="title-block">
-        ${statusHtml}
-        <h1 class="title-block__title">${esc(w.title)}</h1>
-        ${w.manufacturer ? `<a class="title-block__maker" href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.manufacturer)}</a>` : ""}
-        ${w.public_rating ? `
-          <a class="rating-chip" href="${esc(w.url)}" target="_blank" rel="noopener">
-            ${icon("wine")}Народный рейтинг ${fmtRating(w.public_rating, 1).replace(/\.0$/, "")}${icon("chevron", "i--chevron")}
-          </a>` : ""}
-      </div>
-
-      <div class="bottle">
-        ${w.image_url ? `<img src="${esc(w.image_url)}" alt="Вино ${esc(w.category || "")} ${esc(w.title)}">` : `<div class="bottle__empty">${icon("wine")}</div>`}
-      </div>
-
-      <section class="info-card">
-        ${w.region ? detailHtml(w.region_image ? img(w.region_image, "detail__image", "") : iconThumb("pin"), "Регион", esc(w.region)) : ""}
-        ${w.grapes?.length ? detailHtml(w.grape_image ? img(w.grape_image, "detail__image") : iconThumb("grape"), "Сорт винограда", esc(w.grapes.join(", "))) : ""}
-        ${colorLine.length ? detailHtml(`<span class="detail__image detail__image--swatch" style="--swatch:${SWATCH[style]}"></span>`,
-          "Категория и цвет", colorLine.map(esc).join("<br>")) : ""}
-      </section>
-
-      ${w.background_image ? `<div class="visual">${img(w.background_image, "", "Виноград")}</div>` : ""}
-
-      <div class="hero-cards">
-        <div class="hero-card">
-          <span class="round-icon">${icon("thermometer")}</span>
-          <p class="hero-card__label">Температура<br>подачи</p>
-          <p class="hero-card__value">${esc(fmtTemp(w))}</p>
-        </div>
-        <div class="hero-card">
-          <span class="round-icon">${icon("percent")}</span>
-          <p class="hero-card__label">Крепость<br>вина</p>
-          <p class="hero-card__value">${esc(fmtAlcohol(w.alcohol))}</p>
-        </div>
-      </div>
-
-      ${w.sommelier?.pairings?.length ? `
-        <section class="dishes-card" aria-label="Сочетание с блюдами">
-          <div class="dishes-card__left">
-            <span class="round-icon">${icon("utensils")}</span>
-            <p class="dishes-card__label">Сочетание с блюдами</p>
+      <div class="hero">
+        <div class="hero__left">
+          <div class="title-block hero__title">
+            ${statusHtml}
+            <h1 class="title-block__title">${esc(w.title)}</h1>
+            ${w.manufacturer ? `<a class="title-block__maker" href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.manufacturer)}</a>` : ""}
+            ${w.public_rating ? `
+              <a class="rating-chip" href="${esc(w.url)}" target="_blank" rel="noopener">
+                ${icon("wine")}Народный рейтинг ${fmtRating(w.public_rating, 1).replace(/\.0$/, "")}${icon("chevron", "i--chevron")}
+              </a>` : ""}
           </div>
-          <div class="dishes-card__slider">${w.sommelier.pairings.map((p) => dishItemHtml(p, "dish")).join("")}</div>
-        </section>` : ""}`;
+
+          <section class="info-card hero__facts">
+            ${w.region ? detailHtml(w.region_image ? img(w.region_image, "detail__image", "") : iconThumb("pin"), "Регион", esc(w.region)) : ""}
+            ${w.grapes?.length ? detailHtml(w.grape_image ? img(w.grape_image, "detail__image") : iconThumb("grape"), "Сорт винограда", esc(w.grapes.join(", "))) : ""}
+            ${colorLine.length ? detailHtml(`<span class="detail__image detail__image--swatch" style="--swatch:${SWATCH[style]}"></span>`,
+              "Категория и цвет", colorLine.map(esc).join("<br>")) : ""}
+          </section>
+        </div>
+
+        <div class="bottle hero__bottle">
+          ${w.image_url ? `<img src="${esc(w.image_url)}" alt="Вино ${esc(w.category || "")} ${esc(w.title)}">` : `<div class="bottle__empty">${icon("wine")}</div>`}
+        </div>
+
+        <div class="hero__stage">
+          ${w.background_image ? `<div class="visual">${img(w.background_image, "", "Виноград")}</div>` : ""}
+          <div class="hero__cards">
+            <div class="hero-cards">
+              <div class="hero-card">
+                <span class="round-icon">${icon("thermometer")}</span>
+                <p class="hero-card__label">Температура<br>подачи</p>
+                <p class="hero-card__value">${esc(fmtTemp(w))}</p>
+              </div>
+              <div class="hero-card">
+                <span class="round-icon">${icon("percent")}</span>
+                <p class="hero-card__label">Крепость<br>вина</p>
+                <p class="hero-card__value">${esc(fmtAlcohol(w.alcohol))}</p>
+              </div>
+            </div>
+
+            ${w.sommelier?.pairings?.length ? `
+              <section class="dishes-card" aria-label="Сочетание с блюдами">
+                <div class="dishes-card__left">
+                  <span class="round-icon">${icon("utensils")}</span>
+                  <p class="dishes-card__label">Сочетание с блюдами</p>
+                </div>
+                ${sliderHtml("dishes-card__slider", w.sommelier.pairings.map((p) => dishItemHtml(p, "dish")).join(""))}
+              </section>` : ""}
+          </div>
+        </div>
+      </div>`;
   }
+
+  // Горизонтальная лента: на телефоне листается пальцем, на десктопе мышью
+  // её не пролистать (полосы прокрутки скрыты) — там показываются стрелки
+  const sliderHtml = (trackClass, inner) => `
+    <div class="slider">
+      <button class="slider__btn slider__btn--prev" type="button" data-action="slide" data-dir="-1" aria-label="Назад">${icon("chevron")}</button>
+      <div class="slider__track ${trackClass}">${inner}</div>
+      <button class="slider__btn slider__btn--next" type="button" data-action="slide" data-dir="1" aria-label="Вперёд">${icon("chevron")}</button>
+    </div>`;
+
+  function updateSlider(slider) {
+    const track = $(".slider__track", slider);
+    if (!track) return;
+    const max = track.scrollWidth - track.clientWidth;
+    slider.classList.toggle("slider--static", max <= 2);
+    $(".slider__btn--prev", slider).disabled = track.scrollLeft <= 2;
+    $(".slider__btn--next", slider).disabled = track.scrollLeft >= max - 2;
+  }
+  const updateSliders = () => requestAnimationFrame(() => document.querySelectorAll(".slider").forEach(updateSlider));
 
   const iconThumb = (name) => `<span class="detail__image detail__image--icon">${icon(name)}</span>`;
   const detailHtml = (thumb, label, valueHtml) => `
@@ -443,9 +475,9 @@
         <button class="ui-button ui-button_elevated ui-button_large" type="button" data-action="camera">${icon("camera")}Сфотографировать другое вино</button>
       </div>
       ${w.similar?.length ? `
-        <section class="section" aria-labelledby="similar-title">
+        <section class="section section--wide" aria-labelledby="similar-title">
           <h2 class="section__title" id="similar-title">Похожие вина</h2>
-          <div class="carousel">${w.similar.map((x) => wineItemHtml(x, "open")).join("")}</div>
+          ${sliderHtml("carousel", w.similar.map((x) => wineItemHtml(x, "open")).join(""))}
         </section>` : ""}`;
   }
 
@@ -511,7 +543,7 @@
       ${state.photoUrl ? `<img class="photo-thumb" src="${state.photoUrl}" alt="Ваше фото">` : ""}
       <p class="notfound-lead">${esc(lead)}</p>
       ${alts.length ? `
-        <section class="section" style="padding-top:32px" aria-labelledby="alts-title">
+        <section class="section section--wide" style="padding-top:32px" aria-labelledby="alts-title">
           <h2 class="section__title" id="alts-title">${esc(altsTitle)}</h2>
           <div class="grid-2">${alts.map((w, i) => wineItemHtml(w, "pick", i === 0 ? "Больше всего похоже" : "")).join("")}</div>
         </section>` : ""}
@@ -523,6 +555,8 @@
   }
 
   // ── Шторка ───────────────────────────────────────────────────────────────
+  // На телефоне — шторка снизу, от 768 px — окно по центру (см. app.css)
+  const wideSheet = matchMedia("(min-width: 768px)");
   let lastFocus = null;
   function openSheet(title, html) {
     lastFocus = document.activeElement;
@@ -543,8 +577,12 @@
     openSheet(`Вина к блюду «${dish}»`, `<div class="skeleton"></div>`);
     try {
       const res = await api.pairing(dish, { style, exclude });
+      // На телефоне — строки списка, в окне на десктопе — сетка карточек с бутылками
+      const list = wideSheet.matches
+        ? `<div class="grid-3">${res.wines.map((w) => wineItemHtml(w, "open")).join("")}</div>`
+        : res.wines.map((w) => altRowHtml(w, "open")).join("");
       $("#sheet-body").innerHTML = (style ? `<p class="sheet__hint">В том же стиле, что и ваше вино</p>` : "")
-        + (res.wines.length ? res.wines.map((w) => altRowHtml(w, "open")).join("") : `<p class="muted">Подходящих вин не нашлось.</p>`);
+        + (res.wines.length ? list : `<p class="muted">Подходящих вин не нашлось.</p>`);
     } catch (err) {
       $("#sheet-body").innerHTML = `<p class="muted">${esc(err.message)}</p>`;
     }
@@ -645,6 +683,11 @@
       case "dish-home":
         openDish(el.dataset.dish);
         break;
+      case "slide": {
+        const track = $(".slider__track", el.closest(".slider"));
+        track.scrollBy({ left: Number(el.dataset.dir) * track.clientWidth * 0.85, behavior: "smooth" });
+        break;
+      }
       case "more": {
         const box = $("#description");
         box.classList.toggle("description--open");
@@ -661,6 +704,12 @@
     else if ($("#header").classList.contains("core-header--open")) closeMenu();
     else closeSheet();
   });
+
+  // scroll не всплывает — ловим на фазе погружения, для всех лент сразу
+  document.addEventListener("scroll", (e) => {
+    if (e.target.classList?.contains("slider__track")) updateSlider(e.target.closest(".slider"));
+  }, true);
+  window.addEventListener("resize", updateSliders);
 
   $("#search-input").addEventListener("input", (e) => {
     clearTimeout(searchTimer);
@@ -690,6 +739,7 @@
   // Блюда на главной: «цифровой сомелье» работает и без фото
   api.dishes().then((dishes) => {
     $("#dish-grid").innerHTML = dishes.slice(0, 14).map((d) => dishItemHtml(d, "dish-home")).join("");
+    updateSliders();
   }).catch(() => { $("#home-dishes").hidden = true; });
 
   if (DEMO) {

@@ -10,7 +10,6 @@ Ground truth организатор не выдаёт, поэтому единс
 from __future__ import annotations
 
 import html
-import json
 import logging
 from pathlib import Path
 

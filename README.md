@@ -31,10 +31,14 @@
 libs/wine-embeddings/       общий энкодер (SigLIP 2): модель, нормализация, лимит VRAM
 services/catalog-scraper/   сбор каталога с vino-svoe.ru → data/catalog/
 services/indexer/           каталог → векторы → Qdrant
-services/search-api/        FastAPI: /v1/search (топ-k), /v1/eval/predict (контракт организатора)
+services/search-api/        FastAPI: /v1/eval/predict (контракт организатора), /v1/scan и /app/
+                            (сканер + сомелье), /v1/search (топ-10 для анализа)
 tools/eval-runner/          прогон фото через API → HTML-отчёт, точность, Excel
+tools/web-demo/             демо-ответы API для вёрстки без GPU
+tools/site-media/           фото блюд, регионов и сортов с сайта для карточки
 infra/                      Qdrant, скрипты загрузки весов
-docs/                       данные, матчинг, парсер, результаты, план, журнал изменений
+docs/                       данные, парсер, результаты, план, журнал изменений;
+                            docs/history/ — исходный план и этапы, которые уже не актуальны
 data/                       ТЗ, датасет организатора, разметка, каталог (метаданные), отчёты
 ```
 
