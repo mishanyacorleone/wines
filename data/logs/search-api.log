@@ -1,0 +1,71 @@
+INFO:     Started server process [2179854]
+INFO:     Waiting for application startup.
+/mnt/mishutqa/PycharmProjects/wines/.venv/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+11:04:59 INFO    wine_embeddings.runtime: Лимит VRAM: 14.0 ГБ из 23.6 ГБ (59%) на NVIDIA GeForce RTX 3090
+11:04:59 INFO    wine_embeddings.encoder: Загружаю models/siglip2-so400m-patch16-512 на cuda (torch.float16)
+11:05:08 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/scroll "HTTP/1.1 200 OK"
+11:05:08 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/scroll "HTTP/1.1 200 OK"
+11:05:08 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/scroll "HTTP/1.1 200 OK"
+11:05:08 INFO    search_api.main: Сомелье: 2097 вин
+11:05:15 INFO    search_api.ocr: OCR готов: models/easyocr
+11:05:15 INFO    search_api.main: Словарь OCR: 1094 слов по 2097 винам
+11:05:19 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/query "HTTP/1.1 200 OK"
+11:05:19 INFO    search_api.main: Сервис готов: google/siglip2-so400m-patch16-512, OCR включён, VLM выключен
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+11:05:21 INFO    httpx: HTTP Request: GET http://localhost:6333/collections/wines "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:37511 - "GET /health HTTP/1.1" 200 OK
+11:05:21 INFO    httpx: HTTP Request: GET http://localhost:6333/collections/wines "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:32957 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45999 - "GET /app/ HTTP/1.1" 200 OK
+11:05:27 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/query "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:46285 - "POST /v1/scan HTTP/1.1" 200 OK
+11:05:33 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/query "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:46833 - "POST /v1/scan HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37221 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     161.8.107.21:37221 - "GET /app/ HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37221 - "GET /app/app.css?v=5 HTTP/1.1" 200 OK
+INFO:     161.8.107.21:45011 - "GET /app/app.js?v=5 HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37221 - "GET /v1/pairing/dishes HTTP/1.1" 200 OK
+12:49:58 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/query "HTTP/1.1 200 OK"
+INFO:     161.8.107.21:33863 - "POST /v1/scan HTTP/1.1" 200 OK
+INFO:     161.8.107.21:33863 - "GET /catalog-images/pozdnij-sbor-krasnoe.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:39081 - "GET /catalog-images/fanagoriya-ice-wine-kaberne-kaberne-sovinon-krasnoe-sladkoe-11.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37181 - "GET /catalog-images/vintazh-premium.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:33169 - "GET /catalog-images/olymp-winery-adagum-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-11.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:40859 - "GET /catalog-images/nesterov-winery-rubin-golodrigi-krasnoe-suhoe-11.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:41379 - "GET /catalog-images/soyuz-vino-kanonicheskie-traditsii-krasnoe-sladkoe-kaberne-sovinon-115.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:36187 - "GET /catalog-images/olymp-winery-shato-belbek-kaberne-kaberne-sovinon-krasnoe-suhoe-11.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:41379 - "GET /catalog-images/fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:41379 - "GET /catalog-images/kaberne-sovinon-4.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:39081 - "GET /catalog-images/usadba-aleksandrovskaya-bubnovyy-valet-kaberne-sovinon-krasnoe-polusladkoe-13.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37181 - "GET /catalog-images/sober-bash-dve-doliny-tsimlyanskiy-2023-tsimlyanskiy-chernyy-krasnoe-suhoe-13.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:33169 - "GET /catalog-images/pozdnij-sbor-beloe.png HTTP/1.1" 200 OK
+12:52:26 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/query "HTTP/1.1 200 OK"
+INFO:     161.8.107.21:35363 - "POST /v1/scan HTTP/1.1" 200 OK
+INFO:     161.8.107.21:35363 - "GET /catalog-images/aratti-kaberne-sovinon-2021-krasnoe-suhoe.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37735 - "GET /catalog-images/millstream-cellar-select-kaberne-sovinon.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:35363 - "GET /catalog-images/dnk-kaberne-sovinon.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:40739 - "GET /catalog-images/kaberne-sovinon-appasimento.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:39585 - "GET /catalog-images/shato-taman-kaberne.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:44521 - "GET /catalog-images/vinodelnya-uzunov-mono-kaberne-sovinon-krasnoe-suhoe-139.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:39983 - "GET /catalog-images/good-steak-cabernet.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:37735 - "POST /v1/feedback HTTP/1.1" 200 OK
+INFO:     161.8.107.21:36757 - "GET /v1/wines/shato-taman-kaberne HTTP/1.1" 200 OK
+INFO:     161.8.107.21:40903 - "GET /catalog-images/abrau-dyurso-kaberne-sovinon-krasnoe-suhoe-125.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:36831 - "GET /catalog-images/aratti-kaberne-sovinon-2020-krasnoe-suhoe.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:39421 - "GET /catalog-images/aratti-kaberne-po-belomu.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:39179 - "GET /catalog-images/aratti-sovinon-blan-beloe-polusuhoe.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:36301 - "GET /catalog-images/aratti-kaberne-po-belomu-1.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:36301 - "POST /v1/feedback HTTP/1.1" 200 OK
+14:37:05 INFO    httpx: HTTP Request: POST http://localhost:6333/collections/wines/points/query "HTTP/1.1 200 OK"
+INFO:     161.8.107.21:41797 - "POST /v1/scan HTTP/1.1" 200 OK
+INFO:     161.8.107.21:41797 - "GET /catalog-images/usadba-divnomorskoe-yuzhnyy-les-merlo-krasnoe-suhoe-137.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:45919 - "GET /catalog-images/katharon-mezenka-merlo.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:32849 - "GET /catalog-images/chateau-de-talu-merlot.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:41885 - "GET /catalog-images/good-steak-merlot.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:44079 - "GET /catalog-images/saperavi.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:38985 - "GET /catalog-images/katharon-katharon-merlo.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:35889 - "GET /catalog-images/relikta-relikta-merlo-krasnoe-suhoe-135.png HTTP/1.1" 200 OK
+INFO:     161.8.107.21:35889 - "GET /catalog-images/usadba-markoth-merlo-rezerv-krasnoe-suhoe-13.png HTTP/1.1" 200 OK
