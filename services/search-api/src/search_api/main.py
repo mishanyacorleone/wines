@@ -366,9 +366,9 @@ def feedback(body: FeedbackRequest) -> FeedbackResponse:
 async def predict(image: UploadFile = File(...)) -> PredictResponse:
     """Контракт скрипта оценки кейсодержателя: плоский {"slug": "..."}.
 
-    Вина с фото нет в каталоге — {"slug": null}: скрипт организатора пишет его
-    в predictions.jsonl как predicted_slug = null. Решение владельца проекта
-    (28.09.2026); вернуть ближайшее вино — WINE_PREDICT_EMPTY_IF_ABSENT=0.
+    По умолчанию всегда отдаёт вино, выбранное VLM: по условиям проверки все
+    фото есть в каталоге (29.09.2026). WINE_PREDICT_EMPTY_IF_ABSENT=1 — {"slug":
+    null}, если вина нет в каталоге (скрипт организатора пишет predicted_slug = null).
     """
     raw = await _read_upload(image)
     result = _run_search(raw, 1)
