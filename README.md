@@ -128,18 +128,64 @@ docker compose restart api
 
 ### Прогон скрипта оценки организатора
 
-Скрипт из `eval.zip` работает с сервисом без изменений:
+Скрипт из `eval.zip` работает с сервисом без изменений. Всё для прогона лежит
+в папке `eval/` в корне репозитория (она в `.gitignore`):
 
-```bash
-mkdir -p eval && unzip -o "data/Датасет (1)/eval.zip" -x '__MACOSX/*' -d eval
-cd eval && rm -f predictions.jsonl
-bash participant_test.sh --images-dir ./queries --manifest ./queries.tsv \
-  --endpoint 'http://127.0.0.1:8080/v1/eval/predict' --output ./predictions.jsonl
+```
+eval/
+├── participant_test.sh   # скрипт организатора, не менять
+├── queries.tsv           # список фото: query_id<TAB>image_path
+├── queries/              # сами фото
+└── predictions.jsonl     # ответы сервиса — появляется после прогона, его отдаём организатору
 ```
 
-На трёх фото из архива ответ приходит за 1,4–1,5 с. Если вина нет в каталоге,
-сервис отвечает `{"slug": null}`, и скрипт записывает его как `predicted_slug: null`.
-Это сделано намеренно: см. «Ограничения».
+**Режим сервиса для прогона.** По условиям проверки все фото из `queries`
+есть в каталоге, поэтому ответ «вина нет в каталоге» (`{"slug": null}`) может
+только отнять верные ответы. Для прогона сервис переключают так, чтобы он всегда
+отдавал вино, выбранное VLM из топ-5:
+
+```bash
+# 1. в .env (в корне репозитория) — строка:
+WINE_PREDICT_EMPTY_IF_ABSENT=0
+# 2. пересоздать контейнер API, чтобы он перечитал .env (~1 минута на загрузку моделей)
+docker compose up -d --force-recreate api
+docker compose ps                                          # api должен стать healthy
+docker compose exec api printenv WINE_PREDICT_EMPTY_IF_ABSENT   # должно быть 0
+```
+
+Флаг влияет только на `/v1/eval/predict` (и поле `top1` в `/v1/search`).
+Веб-сканер `/app/` при любом значении честно пишет «Данное вино отсутствует
+в каталоге» и предлагает аналоги: экран строится по причине отказа, а не по
+флагу. Точность и скорость от флага не меняются: top-1 96,2%, p95 1,6 с
+(прогон `data/reports/service-eval-mode/`).
+
+**Прогон.** Фото и `queries.tsv` от организатора кладём в `eval/`
+(старые фото из `queries/` удалить), затем:
+
+```bash
+# если eval/ ещё нет — распаковать архив организатора
+mkdir -p eval && unzip -o "data/Датасет (1)/eval.zip" -x '__MACOSX/*' -d eval
+
+cd eval && rm -f predictions.jsonl     # скрипт не перезаписывает готовый файл
+bash participant_test.sh --images-dir ./queries --manifest ./queries.tsv \
+  --endpoint 'http://127.0.0.1:8080/v1/eval/predict' --output ./predictions.jsonl
+wc -l predictions.jsonl                                     # строк = фото в queries.tsv
+jq -r 'select(.predicted_slug == null) | .image_path' predictions.jsonl   # пусто
+```
+
+На трёх фото из архива ответ приходит за 1,3–1,5 с. Что важно знать о скрипте:
+
+- ждёт ответ не дольше 10 с, повторов нет: сорвал — в файле `predicted_slug: null`;
+- временную папку создаёт через `mktemp -d` и требует, чтобы она была в `/tmp`:
+  если в окружении задан `TMPDIR` с другим путём, скрипт падает — `unset TMPDIR`;
+- нужны `curl`, `jq`, `awk`; при системном прокси — `no_proxy=127.0.0.1,localhost`;
+- расширение файла может не совпадать с форматом (в архиве все три фото — WebP,
+  два из них с `.jpg`): сервис определяет формат по содержимому.
+
+**После прогона — вернуть прод-режим:** удалить строку
+`WINE_PREDICT_EMPTY_IF_ABSENT=0` из `.env` (по умолчанию `1`) и снова
+`docker compose up -d --force-recreate api`. В прод-режиме для вина вне каталога
+`/v1/eval/predict` отвечает `{"slug": null}` — см. «Ограничения».
 
 ### Если что-то не так
 

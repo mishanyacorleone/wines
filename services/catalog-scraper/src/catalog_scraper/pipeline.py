@@ -15,7 +15,7 @@ from .images import ImageError, download_png
 from .models import Failure, Wine
 from .nuxt import NuxtParseError, parse_wine
 from .sitemap import load_wine_urls
-from .storage import JsonlWriter, completed_slugs, write_failure, write_wine
+from .storage import JsonlWriter, compact_catalog, write_failure, write_wine
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ async def scrape_catalog(
         stats.total = len(urls)
         logger.info("В sitemap %d вин", len(urls))
 
-        done: set[str] = completed_slugs(settings.catalog_path, settings.images_dir) if resume else set()
+        done: set[str] = compact_catalog(settings.catalog_path, settings.images_dir) if resume else set()
         if done:
             logger.info("Уже собрано ранее: %d — пропускаю", len(done))
 
