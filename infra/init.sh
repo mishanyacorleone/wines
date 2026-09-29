@@ -45,6 +45,14 @@ docker compose --profile init build
 
 step "3/6 Каталог с vino-svoe.ru → data/catalog (докачивает только недостающее)"
 docker compose run --rm scraper
+wines=$(grep -c . data/catalog/catalog.jsonl 2>/dev/null || true)
+if [ -z "$wines" ] || [ "$wines" = 0 ]; then
+  echo "Первая ошибка парсера:" >&2
+  head -1 data/catalog/failures.jsonl 2>/dev/null | jq -r '.reason' >&2 || true
+  fail "каталог пуст — ни одно вино не скачано. CERTIFICATE_VERIFY_FAILED или ConnectError — \
+выход в интернет только через прокси: задайте HTTP_PROXY/HTTPS_PROXY (см. README, «Если что-то не так») \
+и запустите ./infra/init.sh снова"
+fi
 
 step "4/6 Эмбеддинги SigLIP 2 → Qdrant"
 docker compose up -d --wait qdrant

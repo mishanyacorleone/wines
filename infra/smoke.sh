@@ -75,7 +75,9 @@ else
   printf '\nДальше проверять нечего.\n'; exit 1
 fi
 
-if [ -f "$CATALOG" ]; then
+if [ "$points" = 0 ]; then
+  bad "индекс пуст — каталог не собран: см. data/catalog/failures.jsonl, затем ./infra/init.sh"
+elif [ -f "$CATALOG" ]; then
   wines=$(grep -c . "$CATALOG")
   if [ "$points" = "$wines" ]; then ok "индекс полный: $points = $wines вин в $CATALOG"
   else bad "в индексе $points точек, в каталоге $wines вин — переиндексировать: docker compose run --rm indexer --recreate"; fi
@@ -92,8 +94,10 @@ if [ -f "$CATALOG" ] && [ "$SAMPLES" -gt 0 ]; then
   # Равномерно по каталогу, только вина с локальным фото
   jq -r 'select(.image_path) | [.slug, .image_path] | @tsv' "$CATALOG" > "$TMP/wines.tsv"
   total=$(wc -l < "$TMP/wines.tsv")
-  for i in $(seq 1 "$SAMPLES"); do
+  [ "$total" -gt 0 ] || skip "в $CATALOG нет вин с фото — проверка на фото каталога пропущена"
+  for i in $([ "$total" -gt 0 ] && seq 1 "$SAMPLES"); do
     line=$(( (total * i) / (SAMPLES + 1) ))
+    [ "$line" -ge 1 ] || line=1
     IFS=$'\t' read -r slug path < <(sed -n "${line}p" "$TMP/wines.tsv")
     file="data/catalog/$path"
     [ -f "$file" ] || { skip "нет файла $file"; continue; }

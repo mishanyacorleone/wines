@@ -78,9 +78,11 @@ services:
     # Парсеру нужен только интернет, не сеть compose. Сеть хоста — чтобы
     # работал прокси вида http://127.0.0.1:PORT, если выход только через него
     network_mode: host
+    # Прокси берётся из окружения в любом регистре (curl и многие системы
+    # задают только строчные http_proxy/https_proxy)
     environment:
-      HTTP_PROXY: ${HTTP_PROXY:-}
-      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      HTTP_PROXY: ${HTTP_PROXY:-${http_proxy:-}}
+      HTTPS_PROXY: ${HTTPS_PROXY:-${https_proxy:-}}
     volumes:
       - ./data/catalog:/app/data/catalog
 
