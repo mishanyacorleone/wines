@@ -1,0 +1,253 @@
+{
+ "slug": "inkerman-shato-ruzh",
+ "url": "https://vino-svoe.ru/wines/inkerman-shato-ruzh",
+ "title": "Inkerman Шато Руж",
+ "manufacturer": "Инкерманский ЗМВ",
+ "category": "Красное полусухое",
+ "region": "Крым",
+ "grapes": [
+  "Каберне Совиньон",
+  "Мерло",
+  "Пино Нуар"
+ ],
+ "alcohol": 11.0,
+ "public_rating": 5.0,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Ruzh_85fa6ee9ce.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Красно-рубиновый",
+ "temperature": "10-12",
+ "dishes": [
+  "Мясо и стейки",
+  "Паста",
+  "Пицца"
+ ],
+ "description": "Аромат фруктовый с оттенками смородины и вишни, вкус гармоничный, ягодно-фруктовый, с умеренной свежестью и приятной терпкостью.\n",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Kaberne_Sovinon2_2b33e41092.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Kaberne_Sovinon3_39f7936b80.webp",
+ "sommelier": {
+  "summary": "Красное полусухое, лёгкое тело (11%); подавать при 10–12 °C; к блюдам: мясо и стейки, паста, пицца.",
+  "style": {
+   "key": "red",
+   "color": "Красное",
+   "sweetness": "полусухое",
+   "sparkling": false,
+   "body": "лёгкое",
+   "body_level": 1
+  },
+  "serving": {
+   "temperature": "10–12 °C",
+   "temperature_min": 10,
+   "temperature_max": 12,
+   "tip": "Достаньте из холодильника за 15–20 минут до подачи",
+   "glass": "Бургундский бокал с широкой чашей — раскроет аромат Пино Нуара",
+   "aeration": null
+  },
+  "alcohol": {
+   "value": 11.0,
+   "note": "Умеренная крепость — универсально к ужину"
+  },
+  "pairings": [
+   {
+    "dish": "Мясо и стейки",
+    "icon": "🥩",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/myaso_442273df41.webp",
+    "tip": "Стейк, томлёная говядина, баранина — танины смягчают жир"
+   },
+   {
+    "dish": "Паста",
+    "icon": "🍝",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/pasta_9ce9a580b2.webp",
+    "tip": "Паста с томатным или мясным соусом: болоньезе, аматричана"
+   },
+   {
+    "dish": "Пицца",
+    "icon": "🍕",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/pizza_d054f8ea44.webp",
+    "tip": "Пицца маргарита, пепперони"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "perovskih_polusuhoe_krasnoe",
+   "url": "https://vino-svoe.ru/wines/perovskih_polusuhoe_krasnoe",
+   "title": "Полусухое Красное",
+   "manufacturer": "Усадьба Перовских",
+   "category": "Красное полусухое",
+   "region": "Крым",
+   "grapes": [
+    "Мурведр",
+    "Пино Нуар"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 4.89,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Krasnoe_polusuhoe_2024_a4eadaac17.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусухое",
+    "тот же сорт: Пино Нуар",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "perovskih_polusladkoe_krasnoe",
+   "url": "https://vino-svoe.ru/wines/perovskih_polusladkoe_krasnoe",
+   "title": "Полусладкое Красное",
+   "manufacturer": "Усадьба Перовских",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Мерло",
+    "Пино Нуар"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 4.88,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Krasnoe_polusladkoe_2024_f21c3df4d0.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Каберне Совиньон, Мерло",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "alma-valley-graviti-kaberne-sovinon-krasnoe-suhoe-15",
+   "url": "https://vino-svoe.ru/wines/alma-valley-graviti-kaberne-sovinon-krasnoe-suhoe-15",
+   "title": "Гравити",
+   "manufacturer": "Alma Valley",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Мерло",
+    "Пино Нуар"
+   ],
+   "alcohol": 15.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/alma_valley_graviti_kaberne_sovinon_krasnoe_suhoe_15_018520df79.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Каберне Совиньон, Мерло",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "kaberne-sovinon-3",
+   "url": "https://vino-svoe.ru/wines/kaberne-sovinon-3",
+   "title": "Каберне Совиньон",
+   "manufacturer": "Литавщук. Litavshchuk vineyards & winery",
+   "category": "Красное полусухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/MAX_02337_7ecc0a53a9.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусухое",
+    "тот же сорт: Каберне Совиньон",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "fiori-di-mare-krasnoe-polusuhoe",
+   "url": "https://vino-svoe.ru/wines/fiori-di-mare-krasnoe-polusuhoe",
+   "title": "Fiori di Mare красное полусухое",
+   "manufacturer": "Дербент Вино",
+   "category": "Красное полусухое",
+   "region": "Дагестан",
+   "grapes": [
+    "Мерло",
+    "Молдова",
+    "Пино Нуар"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Derbent_Vino_Fori_di_Mare_Di_Kaspiko_d67089804b.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусухое",
+    "тот же сорт: Мерло, Пино Нуар"
+   ]
+  },
+  {
+   "slug": "alma-valley-solntse-vozduh-vinograd-merlo-krasnoe-polusladkoe-14",
+   "url": "https://vino-svoe.ru/wines/alma-valley-solntse-vozduh-vinograd-merlo-krasnoe-polusladkoe-14",
+   "title": "Солнце, воздух, виноград",
+   "manufacturer": "Alma Valley",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Мерло",
+    "Пино чёрный (Пино нуар) и Сира (Шираз)"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/alma_valley_solntse_vozduh_vinograd_merlo_krasnoe_polusladkoe_14_6111b648a4.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Каберне Совиньон, Мерло",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "vibes-cabernet-franc-pinot-noir-pino-nuar-krasnoe-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/vibes-cabernet-franc-pinot-noir-pino-nuar-krasnoe-suhoe-125",
+   "title": "Cabernet Franc – Pinot Noir",
+   "manufacturer": "Vibes",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Пино Нуар"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vibes_cabernet_franc_pinot_noir_pino_nuar_krasnoe_suhoe_125_b1f64fe49e.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Пино Нуар",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "mancopia-meritazh",
+   "url": "https://vino-svoe.ru/wines/mancopia-meritazh",
+   "title": "Mancopia Меритаж",
+   "manufacturer": "Mancopia",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Каберне Фран",
+    "Мерло"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 3.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Meritazh_80196a1ff6.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Каберне Совиньон, Мерло",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  }
+ ]
+}

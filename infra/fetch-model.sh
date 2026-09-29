@@ -25,6 +25,17 @@ for file in "${FILES[@]}"; do
   url="https://huggingface.co/$MODEL/resolve/main/$file"
   target="$DEST/$file"
 
+  # Уже скачанный целиком файл пропускаем: повторный запуск init.sh не должен
+  # ничего тянуть заново. Размер — из заголовков (последний Content-Length
+  # после редиректов на CDN)
+  if [ -s "$target" ]; then
+    remote=$(curl -sIL --retry 3 "$url" | tr -d '\r' | awk 'tolower($1)=="content-length:"{n=$2} END{print n}')
+    if [ -n "$remote" ] && [ "$(stat -c %s "$target")" = "$remote" ]; then
+      echo "Уже есть: $file"
+      continue
+    fi
+  fi
+
   for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
     # --speed-time/--speed-limit рвут зависшее соединение сами,
     # иначе curl будет вечно ждать данные от мёртвого канала

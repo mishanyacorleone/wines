@@ -1,0 +1,236 @@
+{
+ "slug": "inkerman-shato-blan",
+ "url": "https://vino-svoe.ru/wines/inkerman-shato-blan",
+ "title": "Инкерман Шато Блан",
+ "manufacturer": "Инкерманский ЗМВ",
+ "category": "Белое полусухое",
+ "region": "Крым",
+ "grapes": [
+  "Алиготе"
+ ],
+ "alcohol": 13.0,
+ "public_rating": 4.25,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_Shato_Blan_beloe_polusuhoe_526e6530b9.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Золотистый",
+ "temperature": "12-14",
+ "dishes": [
+  "Блюда из птицы",
+  "Запеченные овощи",
+  "Лёгкие закуски"
+ ],
+ "description": "Вкус вина легкий, свежий, с ненавязчивой, гармоничной сладостью. Вино обладает тонким ароматом с оттенками белых цветов.\n",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Malvaziya_2_6fa1f30062.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Marsan3_97291c74a8.webp",
+ "sommelier": {
+  "summary": "Белое полусухое, среднее тело (13%); подавать при 12–14 °C; к блюдам: блюда из птицы, запеченные овощи, лёгкие закуски.",
+  "style": {
+   "key": "white",
+   "color": "Белое",
+   "sweetness": "полусухое",
+   "sparkling": false,
+   "body": "среднее",
+   "body_level": 2
+  },
+  "serving": {
+   "temperature": "12–14 °C",
+   "temperature_min": 12,
+   "temperature_max": 14,
+   "tip": "Слегка охладите: 20–30 минут в холодильнике",
+   "glass": "Бокал для белого вина",
+   "aeration": null
+  },
+  "alcohol": {
+   "value": 13.0,
+   "note": "Умеренная крепость — универсально к ужину"
+  },
+  "pairings": [
+   {
+    "dish": "Блюда из птицы",
+    "icon": "🍗",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ptica_9a6c7e3ea1.webp",
+    "tip": "Курица в сливочном соусе, запечённая индейка"
+   },
+   {
+    "dish": "Запеченные овощи",
+    "icon": "🫑",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ovoshi_grill_7539c7f339.webp",
+    "tip": "Овощи гриль, баклажаны, перец, цукини"
+   },
+   {
+    "dish": "Лёгкие закуски",
+    "icon": "🫒",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/legkie_zakuski_e5a2dedbf7.webp",
+    "tip": "Брускетты, оливки, хумус, овощные чипсы"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "solnechnaya-dolina-meganom-beloe-aligote-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/solnechnaya-dolina-meganom-beloe-aligote-suhoe-13",
+   "title": "Меганом белое",
+   "manufacturer": "Солнечная долина",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/solnechnaya_dolina_meganom_beloe_aligote_beloe_suhoe_13_040339bc56.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "stn-winery-trio-aligote-beloe-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/stn-winery-trio-aligote-beloe-suhoe-13",
+   "title": "Трио Алиготе",
+   "manufacturer": "STN Winery",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 13.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/stn_winery_trio_aligote_beloe_suhoe_13_6adf0dafd2.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "valeriy-zaharin-aligote-burlyuk-beloe-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/valeriy-zaharin-aligote-burlyuk-beloe-suhoe-13",
+   "title": "Алиготе. Бурлюк",
+   "manufacturer": "Валерий Захарьин",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 13.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/valeriy_zaharin_aligote_burlyuk_beloe_suhoe_13_6a0eb14c98.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "oleg-repin-duvankoy-aligote-aligote-beloe-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/oleg-repin-duvankoy-aligote-aligote-beloe-suhoe-13",
+   "title": "Duvankoy Aligote",
+   "manufacturer": "Oleg Repin",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oleg_repin_duvankoy_aligote_aligote_beloe_suhoe_13_58838be609.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "vaynkraft-aligote-beloe-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/vaynkraft-aligote-beloe-suhoe-125",
+   "title": "Алиготе",
+   "manufacturer": "ВайнКрафт",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_aligote_beloe_suhoe_125_7b4945b265.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "valeriy-zaharin-aligote-burlyuk-beloe-bryut-115",
+   "url": "https://vino-svoe.ru/wines/valeriy-zaharin-aligote-burlyuk-beloe-bryut-115",
+   "title": "Алиготе. Бурлюк",
+   "manufacturer": "Валерий Захарьин",
+   "category": "Белое брют",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 11.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/valeriy_zaharin_aligote_burlyuk_igristoe_bryut_beloe_115_adb6620d61.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "aligote-barrel-2024",
+   "url": "https://vino-svoe.ru/wines/aligote-barrel-2024",
+   "title": " Алиготе Баррель, 2024",
+   "manufacturer": "Коммуналка",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/DSC_09173_4a9ff95cc2.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "aligote-barrel-2025",
+   "url": "https://vino-svoe.ru/wines/aligote-barrel-2025",
+   "title": "Алиготе Баррель, 2025",
+   "manufacturer": "Коммуналка",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/DSC_09173_4a9ff95cc2.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Алиготе",
+    "тоже Крым"
+   ]
+  }
+ ]
+}

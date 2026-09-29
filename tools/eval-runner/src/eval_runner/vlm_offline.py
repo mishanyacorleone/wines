@@ -1,12 +1,13 @@
 """Офлайн-проверка VLM-реранкера на готовом прогоне, без перезапуска сервиса.
 
     PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/src \\
-    .venv/bin/python -m eval_runner.vlm_offline data/reports/ocr/results.jsonl \\
+    .venv/bin/python -m eval_runner.vlm_offline data/reports/image-top20/results.jsonl \\
         --out data/reports/vlm/results.jsonl
 
-Берёт топ-5 каждого фото из results.jsonl, спрашивает VLM и пишет новый
+Берёт топ-k каждого фото из results.jsonl, спрашивает VLM и пишет новый
 results.jsonl: кандидаты отсортированы по вероятности VLM, у каждого поле
-vlm_prob, у фото — vlm_none_prob и vlm_ms. Точность — обычным eval_runner.score.
+vlm_prob, у фото — vlm_none_prob и vlm_ms. С --verify — ещё verify_prob
+(попарная проверка топ-1, как в сервисе). Точность — обычным eval_runner.score.
 """
 
 from __future__ import annotations
@@ -35,11 +36,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--photos", type=Path, default=REPO / "data/real-photos")
     parser.add_argument("--catalog", type=Path, default=REPO / "data/catalog")
     parser.add_argument("--model", type=Path, default=REPO / "models/Qwen3-VL-4B-Instruct")
-    parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--query-max-pixels", type=int, default=1024 * 1024)
     parser.add_argument("--candidate-max-pixels", type=int, default=256 * 1024)
     parser.add_argument("--candidate-images", action="store_true",
                         help="показывать VLM эталонные фото кандидатов, не только текст")
+    parser.add_argument("--verify", action="store_true",
+                        help="проверить выбранный топ-1 попарно (VlmReranker.verify)")
     parser.add_argument("--vram-gb", type=float, default=14.0)
     parser.add_argument("--limit", type=int, default=0, help="только первые N фото")
     args = parser.parse_args(argv)
@@ -68,12 +71,15 @@ def main(argv: list[str] | None = None) -> int:
                     image.load()
                     started = time.perf_counter()
                     verdict = reranker.judge(image, candidates)
+                    for candidate, prob in zip(candidates, verdict.probs):
+                        candidate["vlm_prob"] = prob
+                    # sorted стабилен: при равных вероятностях остаётся прежний порядок
+                    candidates = sorted(candidates, key=lambda c: c["vlm_prob"], reverse=True)
+                    if args.verify:
+                        row["verify_prob"] = reranker.verify(image, candidates[0])
                     elapsed = (time.perf_counter() - started) * 1000
                 timings.append(elapsed)
-                for candidate, prob in zip(candidates, verdict.probs):
-                    candidate["vlm_prob"] = prob
-                # sorted стабилен: при равных вероятностях остаётся прежний порядок
-                row["results"] = sorted(candidates, key=lambda c: c["vlm_prob"], reverse=True)
+                row["results"] = candidates
                 for rank, candidate in enumerate(row["results"], start=1):
                     candidate["rank"] = rank
                 row["vlm_none_prob"] = verdict.none_prob

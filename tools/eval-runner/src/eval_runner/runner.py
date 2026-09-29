@@ -34,8 +34,11 @@ class QueryResult:
     # то есть то же, что измеряет скрипт организатора
     latency_ms: float = 0.0
     server_timings: dict[str, float] = field(default_factory=dict)
-    ocr_text: list[str] | None = None
     vlm_none_prob: float | None = None
+    verify_prob: float | None = None
+    # решение сервиса «найдено / нет в каталоге» (search_api.verdict)
+    status: str | None = None
+    reason: str | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -46,8 +49,10 @@ class QueryResult:
             "top5_confidence": self.top5_confidence,
             "margin": self.margin,
             "server_timings": self.server_timings,
-            "ocr_text": self.ocr_text,
             "vlm_none_prob": self.vlm_none_prob,
+            "verify_prob": self.verify_prob,
+            "status": self.status,
+            "reason": self.reason,
             "error": self.error,
             "results": self.results,
         }
@@ -111,8 +116,10 @@ def run_queries(
                 result.top5_confidence = payload.get("top5_confidence", 0.0)
                 result.margin = payload.get("margin", 0.0)
                 result.server_timings = payload.get("timings", {})
-                result.ocr_text = payload.get("ocr_text")
                 result.vlm_none_prob = payload.get("vlm_none_prob")
+                result.verify_prob = payload.get("verify_prob")
+                result.status = payload.get("status")
+                result.reason = payload.get("reason")
                 summary.latencies_ms.append(result.latency_ms)
 
             results.append(result)

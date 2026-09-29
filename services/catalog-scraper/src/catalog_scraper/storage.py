@@ -54,17 +54,35 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
                 logger.warning("Пропускаю битую строку %s:%d", path, line_no)
 
 
-def completed_slugs(catalog_path: Path, images_dir: Path) -> set[str]:
-    """Слаги, которые уже собраны: есть строка в каталоге И PNG на диске."""
-    done: set[str] = set()
+def compact_catalog(catalog_path: Path, images_dir: Path) -> set[str]:
+    """Оставляет в каталоге только собранные вина и возвращает их слаги.
+
+    Собранное вино — строка в каталоге И PNG на диске. Остальные строки
+    выбрасываются: парсер соберёт эти вина заново и допишет в конец. Без этого
+    на чистом клоне (catalog.jsonl в git, фото — нет) каждое вино попадало в
+    файл дважды. Повтор слага — последняя строка, как при upsert в индекс.
+    """
+    rows: dict[str, dict[str, Any]] = {}
+    total = 0
     for row in read_jsonl(catalog_path):
+        total += 1
         slug = row.get("slug")
         image_path = row.get("image_path")
         if not slug or not image_path:
             continue
         if (images_dir.parent / image_path).exists():
-            done.add(slug)
-    return done
+            rows.pop(slug, None)  # повтор встаёт на место последней строки
+            rows[slug] = row
+    if len(rows) != total:
+        logger.info("Каталог: из %d строк собраны %d вин, остальные соберу заново",
+                    total, len(rows))
+        # через временный файл: прерванная запись не должна стереть каталог
+        partial = catalog_path.with_name(catalog_path.name + ".tmp")
+        with JsonlWriter(partial, append=False) as writer:
+            for row in rows.values():
+                writer.write(row)
+        partial.replace(catalog_path)
+    return set(rows)
 
 
 def write_wine(writer: JsonlWriter, wine: Wine) -> None:

@@ -1,13 +1,13 @@
 -r ../../libs/wine-embeddings/requirements.txt
 qdrant-client==1.12.2
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+# без [standard]: watchfiles, websockets, uvloop сервису не нужны —
+# запросы идут по одному, узкое место — GPU, а не HTTP-парсер
+uvicorn==0.34.0
 python-multipart==0.0.20
 pydantic==2.10.4
 # чтение .env при запуске
 python-dotenv==1.2.3
-# OCR этикетки. torchvision закреплён явно: без этого easyocr тянет свежий
-# torchvision, а тот — несовместимый torch с CUDA 13
+# Процессор картинок Qwen3-VL (VLM-реранкер). Версия закреплена под torch 2.8:
+# свежий torchvision тянет несовместимый torch с CUDA 13
 torchvision==0.23.0
-easyocr==1.7.2
-rapidfuzz==3.14.6

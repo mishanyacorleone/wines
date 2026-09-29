@@ -1,0 +1,254 @@
+{
+ "slug": "belbek-muskat-oranzh-muskat-belyy-oranzhevoe-suhoe-125",
+ "url": "https://vino-svoe.ru/wines/belbek-muskat-oranzh-muskat-belyy-oranzhevoe-suhoe-125",
+ "title": "Мускат Оранж",
+ "manufacturer": "Бельбек",
+ "category": "Оранжевое сухое",
+ "region": "Крым",
+ "grapes": [
+  "Мускат Белый"
+ ],
+ "alcohol": 12.0,
+ "public_rating": null,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belbek_muskat_oranzh_muskat_belyy_oranzhevoe_suhoe_125_15ac5f6bc6.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Золотистый",
+ "temperature": "10-12",
+ "dishes": [
+  "Блюда из птицы",
+  "Легкие закуски",
+  "Мясо и стейки",
+  "Рыба и морепродукты",
+  "Сыры"
+ ],
+ "description": "Вкус: Выразительный, насыщенный, свежий и сочный, с пряными тонами, с едва заметным танином и освежающей кислотностью в послевкусии. Богатый, с нотами персика, личи, апельсиновой цедры и ванили.",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Marsan3_97291c74a8.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Muskat_d58579a0e1.webp",
+ "sommelier": {
+  "summary": "Оранжевое сухое, среднее тело (12%); подавать при 10–12 °C; к блюдам: блюда из птицы, легкие закуски, мясо и стейки.",
+  "style": {
+   "key": "orange",
+   "color": "Оранжевое",
+   "sweetness": "сухое",
+   "sparkling": false,
+   "body": "среднее",
+   "body_level": 2
+  },
+  "serving": {
+   "temperature": "10–12 °C",
+   "temperature_min": 10,
+   "temperature_max": 12,
+   "tip": "Достаньте из холодильника за 15–20 минут до подачи",
+   "glass": "Бокал для белого вина с широкой чашей",
+   "aeration": "Можно дать вину подышать 10–15 минут — аромат станет глубже"
+  },
+  "alcohol": {
+   "value": 12.0,
+   "note": "Умеренная крепость — универсально к ужину"
+  },
+  "pairings": [
+   {
+    "dish": "Блюда из птицы",
+    "icon": "🍗",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ptica_9a6c7e3ea1.webp",
+    "tip": "Курица и индейка, запечённые с травами"
+   },
+   {
+    "dish": "Легкие закуски",
+    "icon": "🫒",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/legkie_zakuski_e5a2dedbf7.webp",
+    "tip": "Брускетты, оливки, хумус, овощные чипсы"
+   },
+   {
+    "dish": "Мясо и стейки",
+    "icon": "🥩",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/myaso_442273df41.webp",
+    "tip": "Свинина и телятина с пряностями"
+   },
+   {
+    "dish": "Рыба и морепродукты",
+    "icon": "🐟",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ryba_moreprodukty_e57b445d95.webp",
+    "tip": "Жирная и копчёная рыба, рыба с пряностями"
+   },
+   {
+    "dish": "Сыры",
+    "icon": "🧀",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+    "tip": "Выдержанные и пикантные: пекорино, комте, сыры с плесенью"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "belbek-muskat-muskat-belyy-beloe-suhoe-127",
+   "url": "https://vino-svoe.ru/wines/belbek-muskat-muskat-belyy-beloe-suhoe-127",
+   "title": "Мускат",
+   "manufacturer": "Бельбек",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Мускат Белый"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belbek_muskat_muskat_belyy_beloe_suhoe_127_d8229478b6.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Мускат Белый",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "oxana-istratova-wine-vione-2023-oranzhevoe-suhoe-119",
+   "url": "https://vino-svoe.ru/wines/oxana-istratova-wine-vione-2023-oranzhevoe-suhoe-119",
+   "title": "Вионье 2023",
+   "manufacturer": "Oxana Istratova Wine",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Вионье"
+   ],
+   "alcohol": 11.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oxana_istratova_wine_vione_2023_oranzhevoe_suhoe_119_d9ca068047.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "oxana-istratova-wine-vione-2024-oranzhevoe-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/oxana-istratova-wine-vione-2024-oranzhevoe-suhoe-13",
+   "title": "Вионье 2024",
+   "manufacturer": "Oxana Istratova Wine",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Вионье"
+   ],
+   "alcohol": 13.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oxana_istratova_wine_vione_2024_oranzhevoe_suhoe_13_66846a8d60.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "esse-nectar-muscat-muskat-belyy-beloe-polusuhoe-12",
+   "url": "https://vino-svoe.ru/wines/esse-nectar-muscat-muskat-belyy-beloe-polusuhoe-12",
+   "title": "Nectar Muscat",
+   "manufacturer": "ESSE",
+   "category": "Белое полусухое",
+   "region": "Крым",
+   "grapes": [
+    "Мускат Белый"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_nectar_muscat_muskat_belyy_igristoe_polusuhoe_beloe_12_5b5a2eb0f1.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Мускат Белый",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "loco-cimbali-oranzh-muskat-oranzhevoe-suhoe-127",
+   "url": "https://vino-svoe.ru/wines/loco-cimbali-oranzh-muskat-oranzhevoe-suhoe-127",
+   "title": "Оранж",
+   "manufacturer": "Loco Cimbali",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Мускат"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/loco_cimbali_oranzh_muskat_oranzhevoe_suhoe_127_dc98a21033.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "vaynkraft-traminer-oranzh-2-traminer-rozovyy-oranzhevoe-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/vaynkraft-traminer-oranzh-2-traminer-rozovyy-oranzhevoe-suhoe-125",
+   "title": "Траминер Оранж 2",
+   "manufacturer": "ВайнКрафт",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Траминер Розовый"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_traminer_oranzh_2_traminer_rozovyy_oranzhevoe_suhoe_125_3c507d40ce.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "vaynkraft-traminer-oranzh-traminer-rozovyy-oranzhevoe-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/vaynkraft-traminer-oranzh-traminer-rozovyy-oranzhevoe-suhoe-125",
+   "title": "Траминер Оранж",
+   "manufacturer": "ВайнКрафт",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Траминер Розовый"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_traminer_oranzh_traminer_rozovyy_oranzhevoe_suhoe_125_8a46ea97b3.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "muskat-avtorskoe-vino",
+   "url": "https://vino-svoe.ru/wines/muskat-avtorskoe-vino",
+   "title": "Мускат. Авторское вино",
+   "manufacturer": "Массандра",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Мускат Белый"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/2923_GVA_Ps_CA_no_bg_preview_carve_photos_4a01fd1119.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Мускат Белый",
+    "тоже Крым"
+   ]
+  }
+ ]
+}

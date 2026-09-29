@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Локальный запуск Qdrant без Docker.
-# Docker Hub из этой сети недоступен, поэтому используем нативный бинарник
-# с того же GitHub-релиза. Поведение и REST API идентичны образу из
-# docker-compose.yml, который остаётся основным способом развёртывания.
+# Запасной запуск Qdrant без Docker — нативный бинарник той же версии (1.19.1),
+# что образ в docker-compose.yml; хранилище то же (data/qdrant/storage), так что
+# индекс переносится между способами без переиндексации. Основной способ —
+# docker compose up -d.
 set -euo pipefail
 
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

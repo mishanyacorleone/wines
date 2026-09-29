@@ -48,8 +48,15 @@ def load_catalog(catalog_path: Path, site_base_url: str) -> list[CatalogEntry]:
                     "color": row.get("color"),
                     "region": row.get("region"),
                     "manufacturer": row.get("manufacturer"),
+                    "manufacturer_slug": row.get("manufacturer_slug"),
                     "grapes": row.get("grapes") or [],
                     "alcohol": row.get("alcohol"),
+                    # поля карточки и «цифрового сомелье»: подача, блюда, описание
+                    "dishes": row.get("dishes") or [],
+                    "temperature": row.get("temperature"),
+                    "public_rating": row.get("public_rating"),
+                    "description": row.get("description"),
+                    "image_url": row.get("image_url"),
                     "image_path": image_path,
                 },
             )

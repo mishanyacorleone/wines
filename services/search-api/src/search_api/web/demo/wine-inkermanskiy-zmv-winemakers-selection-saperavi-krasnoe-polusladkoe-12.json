@@ -1,0 +1,246 @@
+{
+ "slug": "inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
+ "url": "https://vino-svoe.ru/wines/inkermanskiy-zmv-winemakers-selection-saperavi-krasnoe-polusladkoe-12",
+ "title": "Winemaker's Selection Саперави",
+ "manufacturer": "Инкерманский ЗМВ",
+ "category": "Красное полусладкое",
+ "region": "Крым",
+ "grapes": [
+  "Саперави"
+ ],
+ "alcohol": 12.0,
+ "public_rating": 5.0,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/inkermanskiy_zmv_winemakers_selection_saperavi_igristoe_polusladkoe_krasnoe_12_b8254979b2.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Цвет глубокий, рубиновый.",
+ "temperature": "8–10",
+ "dishes": [
+  "Выпечка и десерты",
+  "Русская кухня",
+  "Рыба и морепродукты",
+  "Сыры"
+ ],
+ "description": "Игра мелких настойчивых пузырьков. Аромат узнаваемый сортовой: черная пряная вишня, зрелый кизил, тона черной смородины и граната. Простой и понятный вкус сладких черных фруктов уравновешен заметной кислотностью и приятной терпкостью.",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Saperavi_severnyj_e91216eac7.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Saperavi3_973cb28f6e.webp",
+ "sommelier": {
+  "summary": "Красное полусладкое, среднее тело (12%); подавать при 8–10 °C; к блюдам: выпечка и десерты, русская кухня, рыба и морепродукты.",
+  "style": {
+   "key": "sweet",
+   "color": "Красное",
+   "sweetness": "полусладкое",
+   "sparkling": false,
+   "body": "среднее",
+   "body_level": 2
+  },
+  "serving": {
+   "temperature": "8–10 °C",
+   "temperature_min": 8,
+   "temperature_max": 10,
+   "tip": "Достаньте из холодильника за 15–20 минут до подачи",
+   "glass": "Небольшой десертный бокал",
+   "aeration": null
+  },
+  "alcohol": {
+   "value": 12.0,
+   "note": "Умеренная крепость — универсально к ужину"
+  },
+  "pairings": [
+   {
+    "dish": "Выпечка и десерты",
+    "icon": "🍰",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/nesladkaya_vypechka_05bf04c48c.webp",
+    "tip": "Фруктовые тарты, панна-котта — десерт не слаще вина"
+   },
+   {
+    "dish": "Русская кухня",
+    "icon": "🥟",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/russkaya_kuhnya_d6b2c07249.webp",
+    "tip": "Пельмени, пироги, соленья"
+   },
+   {
+    "dish": "Рыба и морепродукты",
+    "icon": "🐟",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ryba_moreprodukty_e57b445d95.webp",
+    "tip": "Рыба на гриле с лимоном и травами"
+   },
+   {
+    "dish": "Сыры",
+    "icon": "🧀",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+    "tip": "Голубые сыры — горгонзола, рокфор — контраст сладости и соли"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "agora-saperavi",
+   "url": "https://vino-svoe.ru/wines/agora-saperavi",
+   "title": "AGORA Саперави",
+   "manufacturer": "AGORA WINERY",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Agora_Saperavi_c472cc0afc.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусладкое",
+    "тот же сорт: Саперави",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "valeriy-zaharin-bakkal-su-saperavi-bastardo-kaberne-sovinon-krasnoe-polusladkoe-11",
+   "url": "https://vino-svoe.ru/wines/valeriy-zaharin-bakkal-su-saperavi-bastardo-kaberne-sovinon-krasnoe-polusladkoe-11",
+   "title": "Баккал Су Саперави - Бастардо - Каберне Совиньон",
+   "manufacturer": "Валерий Захарьин",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 11.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/valeriy_zaharin_bakkal_su_saperavi_bastardo_kaberne_sovinon_krasnoe_polusladkoe_11_b8d351c52f.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусладкое",
+    "тот же сорт: Саперави",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "fanagoriya-rs-noir-saperavi-krasnoe-polusladkoe-125",
+   "url": "https://vino-svoe.ru/wines/fanagoriya-rs-noir-saperavi-krasnoe-polusladkoe-125",
+   "title": "RS. Noir",
+   "manufacturer": "Фанагория",
+   "category": "Красное полусладкое",
+   "region": "Кубань",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/fanagoriya_rs_noir_saperavi_krasnoe_polusladkoe_125_9b8002f11a.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусладкое",
+    "тот же сорт: Саперави",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "zolotaya-balka-igristoe-krasnoe-polusladkoe",
+   "url": "https://vino-svoe.ru/wines/zolotaya-balka-igristoe-krasnoe-polusladkoe",
+   "title": "Золотая Балка игристое красное полусладкое",
+   "manufacturer": "Золотая Балка",
+   "category": "Красное полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон",
+    "Мерло",
+    "Саперави"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 3.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Zolotaya_Balka_igristoe_krasnoe_polusladkoe_8604608e59.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусладкое",
+    "тот же сорт: Саперави",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "soyuz-vino-mosavali-saperavi-polusladkoe-krasnoe-11",
+   "url": "https://vino-svoe.ru/wines/soyuz-vino-mosavali-saperavi-polusladkoe-krasnoe-11",
+   "title": "Мосавали Саперави Полусладкое",
+   "manufacturer": "Союз-Вино",
+   "category": "Красное полусладкое",
+   "region": "Кубань",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 4.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/soyuz_vino_mosavali_saperavi_polusladkoe_krasnoe_11_Photoroom_f236b93ec6.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусладкое",
+    "тот же сорт: Саперави"
+   ]
+  },
+  {
+   "slug": "kuban-vino-aristov-rosso-polusladkoe-saperavi-krasnoe-13",
+   "url": "https://vino-svoe.ru/wines/kuban-vino-aristov-rosso-polusladkoe-saperavi-krasnoe-13",
+   "title": "Аристов Россо Полусладкое",
+   "manufacturer": "Кубань-Вино",
+   "category": "Красное полусладкое",
+   "region": "Кубань",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 13.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/kuban_vino_aristov_rosso_polusladkoe_saperavi_krasnoe_13_ed04238b6b.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное полусладкое",
+    "тот же сорт: Саперави"
+   ]
+  },
+  {
+   "slug": "saperavi-kvevri",
+   "url": "https://vino-svoe.ru/wines/saperavi-kvevri",
+   "title": "Саперави Квеври",
+   "manufacturer": "Усадьба Перовских",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 4.75,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/ge_saperavi_3fc34b52d4.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Саперави",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "belbek-belbek-saperavi-rezerv-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/belbek-belbek-saperavi-rezerv-krasnoe-suhoe-14",
+   "title": "Бельбек Саперави Резерв",
+   "manufacturer": "Бельбек",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belbek_belbek_saperavi_rezerv_krasnoe_suhoe_14_d920558ff2.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Саперави",
+    "тоже Крым"
+   ]
+  }
+ ]
+}

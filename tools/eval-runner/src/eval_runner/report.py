@@ -10,7 +10,6 @@ Ground truth организатор не выдаёт, поэтому единс
 from __future__ import annotations
 
 import html
-import json
 import logging
 from pathlib import Path
 
@@ -123,16 +122,11 @@ def _candidate_card(candidate: dict, thumb_src: str | None, full_src: str | None
     score = candidate.get("score", 0.0)
     url = html.escape(candidate.get("url", ""))
 
-    # при включённом OCR итоговый балл складывается из картинки и текста —
-    # показываем обе части, иначе непонятно, кто переставил кандидата
+    # с VLM порядок задаёт его вероятность, а не косинус — показываем оба,
+    # иначе непонятно, кто переставил кандидата
     details = f"cos {score:.4f}"
-    if "image_score" in candidate:
-        details = f"итог {score:.4f} · картинка {candidate['image_score']:.4f} · текст {candidate.get('text_score', 0.0):+.2f}"
-    terms = ""
-    if candidate.get("matched_terms"):
-        terms += f'<div class="score">✓ {html.escape(", ".join(candidate["matched_terms"]))}</div>'
-    if candidate.get("conflict_terms"):
-        terms += f'<div class="score">✗ {html.escape(", ".join(candidate["conflict_terms"]))}</div>'
+    if candidate.get("vlm_prob") is not None:
+        details += f" · VLM {candidate['vlm_prob'] * 100:.0f}%"
 
     if thumb_src:
         # клик по превью открывает оригинал каталожного фото: этикетку видно
@@ -153,7 +147,6 @@ def _candidate_card(candidate: dict, thumb_src: str | None, full_src: str | None
           <div class="sub">{manufacturer}</div>
           <div class="sub">{category}</div>
           <div class="score">conf {confidence:.1f}% · {details}</div>
-          {terms}
         </div>
       </div>"""
 
@@ -169,13 +162,17 @@ def _query_row(index: int, result: QueryResult, thumb_src: str, full_src: str, c
         f"{result.latency_ms:.0f} мс всего · энкодер {server.get('encode_ms', 0):.0f}"
         f" · поиск {server.get('search_ms', 0):.0f}"
     )
-    if server.get("ocr_ms"):
-        timings += f" · OCR {server['ocr_ms']:.0f}"
-    ocr = (
-        f'<div class="sub">OCR: {html.escape(" / ".join(result.ocr_text))}</div>'
-        if result.ocr_text
-        else ""
-    )
+    if server.get("vlm_ms"):
+        timings += f" · VLM {server['vlm_ms']:.0f}"
+    # решение сервиса: «нашли» или «нет в каталоге» и по какому сигналу
+    verdict = ""
+    if result.status:
+        verdict = f"решение: {html.escape(result.status)} ({html.escape(result.reason or '')})"
+        if result.verify_prob is not None:
+            verdict += f" · проверка {result.verify_prob * 100:.0f}%"
+        if result.vlm_none_prob is not None:
+            verdict += f" · «ни одна» {result.vlm_none_prob * 100:.0f}%"
+        verdict = f'<div class="sub">{verdict}</div>'
     return f"""
     <section class="row" data-index="{index}">
       <div class="query">
@@ -184,7 +181,7 @@ def _query_row(index: int, result: QueryResult, thumb_src: str, full_src: str, c
           <div class="fname">{html.escape(result.filename)}</div>
           <div class="sub">{timings}</div>
           <div class="sub">margin {result.margin:.4f} · top1 {result.top1_confidence * 100:.1f}%</div>
-          {ocr}
+          {verdict}
           {error}
           <div class="marks">
             <label><input type="radio" name="m{index}" value="1"> верно #1</label>

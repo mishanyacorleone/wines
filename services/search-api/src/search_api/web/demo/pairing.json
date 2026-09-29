@@ -1,0 +1,175 @@
+{
+ "dish": "Сыры",
+ "wines": [
+  {
+   "slug": "valeriy-zaharin-avtorskoe-vino-ot-valeriya-zaharina-krasnoe-pino-nuar-suhoe-125",
+   "url": "https://vino-svoe.ru/wines/valeriy-zaharin-avtorskoe-vino-ot-valeriya-zaharina-krasnoe-pino-nuar-suhoe-125",
+   "title": "Авторское вино от Валерия Захарьина. Красное",
+   "manufacturer": "Валерий Захарьин",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Пино Нуар"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/valeriy_zaharin_avtorskoe_vino_ot_valeriya_zaharina_krasnoe_pino_nuar_krasnoe_suhoe_125_32e5dd1102.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "vinabani-aligote-beloe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/vinabani-aligote-beloe-suhoe-12",
+   "title": "Алиготе",
+   "manufacturer": "VinaBani",
+   "category": "Белое сухое",
+   "region": "Долина Дона",
+   "grapes": [
+    "Алиготе"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinabani_aligote_beloe_suhoe_12_3264ece5af.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "valeriy-zaharin-bastardo-kefesiya-avtohtonnoe-vino-kryma-bastardo-magarachskiy-krasnoe-suhoe-115",
+   "url": "https://vino-svoe.ru/wines/valeriy-zaharin-bastardo-kefesiya-avtohtonnoe-vino-kryma-bastardo-magarachskiy-krasnoe-suhoe-115",
+   "title": "Бастардо - Кефесия. Автохтонное вино Крыма",
+   "manufacturer": "Валерий Захарьин",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Бастардо Магарачский"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/valeriy_zaharin_bastardo_kefesiya_avtohtonnoe_vino_kryma_bastardo_magarachskiy_krasnoe_suhoe_115_e521ee5147.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "aratti-kaberne-po-belomu",
+   "url": "https://vino-svoe.ru/wines/aratti-kaberne-po-belomu",
+   "title": "АРАТТИ Каберне по-белому",
+   "manufacturer": "АРАТТИ",
+   "category": "Красное сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Kaberne_po_bel_7f4d2143bf.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "aratti-kaberne-po-belomu-1",
+   "url": "https://vino-svoe.ru/wines/aratti-kaberne-po-belomu-1",
+   "title": "АРАТТИ Каберне по-белому",
+   "manufacturer": "АРАТТИ",
+   "category": "Розовое полусухое",
+   "region": "Кубань",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Kaberne_po_bel_p_suh_6e9878c657.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "vino-suhoe-beloe-endemy-shardone",
+   "url": "https://vino-svoe.ru/wines/vino-suhoe-beloe-endemy-shardone",
+   "title": "Эндемы Шардоне",
+   "manufacturer": "Дербент Вино",
+   "category": "Белое сухое",
+   "region": "Дагестан",
+   "grapes": [
+    "Шардоне"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/TV_Endemy_Shardone_67f5af65c9.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "vino-suhoe-beloe-endemy-sovinon",
+   "url": "https://vino-svoe.ru/wines/vino-suhoe-beloe-endemy-sovinon",
+   "title": "Эндемы Совиньон",
+   "manufacturer": "Дербент Вино",
+   "category": "Белое сухое",
+   "region": "Дагестан",
+   "grapes": [
+    "Совиньон Блан"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/TV_Endemy_Sovinon_5c280667ff.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "vino-suhoe-krasnoe-endemy-saperavi",
+   "url": "https://vino-svoe.ru/wines/vino-suhoe-krasnoe-endemy-saperavi",
+   "title": "Эндемы Саперави",
+   "manufacturer": "Дербент Вино",
+   "category": "Красное сухое",
+   "region": "Дагестан",
+   "grapes": [
+    "Саперави"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/TV_Endemy_Saperavi_588c1f136e.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "valeriy-zaharin-kokur-klassika-kokur-belyy-beloe-bryut-115",
+   "url": "https://vino-svoe.ru/wines/valeriy-zaharin-kokur-klassika-kokur-belyy-beloe-bryut-115",
+   "title": "Кокур Классика",
+   "manufacturer": "Валерий Захарьин",
+   "category": "Белое брют",
+   "region": "Крым",
+   "grapes": [
+    "Кокур Белый"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/valeriy_zaharin_kokur_klassika_kokur_belyy_igristoe_bryut_beloe_115_4d15edacbd.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  },
+  {
+   "slug": "aratti-muskat-belyj-polusuhoe",
+   "url": "https://vino-svoe.ru/wines/aratti-muskat-belyj-polusuhoe",
+   "title": "АРАТТИ Мускат белый полусухое",
+   "manufacturer": "АРАТТИ",
+   "category": "Белое полусухое",
+   "region": "Кубань",
+   "grapes": [
+    "Мускат Белый"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Muskat_p_suh_342e91568f.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": []
+  }
+ ]
+}

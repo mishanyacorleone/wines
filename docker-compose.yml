@@ -1,0 +1,104 @@
+# Сканер вин «Своё Вино» в контейнерах.
+#
+# Первый запуск — ./infra/init.sh: скачает модели, соберёт каталог с сайта,
+# построит индекс и поднимет сервис. Дальше достаточно:
+#   docker compose up -d            # Qdrant + API на :8080
+#
+# Разовые шаги (профиль init, сами не стартуют):
+#   docker compose run --rm scraper            # каталог с vino-svoe.ru → data/catalog
+#   docker compose run --rm indexer --recreate # эмбеддинги SigLIP 2 → Qdrant
+#
+# Тяжёлое — веса моделей и данные — лежит в репозитории на хосте и
+# подключается томами: образы содержат только код и зависимости.
+name: wines
+
+# GPU для API и индексатора (нужен NVIDIA Container Toolkit на хосте)
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    restart: unless-stopped
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - ./data/qdrant/storage:/qdrant/storage
+      - ./data/qdrant/snapshots:/qdrant/snapshots
+    # Наружу только на localhost — для отладки; сервисы ходят по внутренней сети
+    ports:
+      - "127.0.0.1:6333:6333"
+    healthcheck:
+      # в образе нет curl — проверяем, что порт принимает соединения
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: services/search-api/Dockerfile
+    image: wines-api
+    <<: *gpu
+    restart: unless-stopped
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    # Тонкая настройка (пороги, VRAM, флаги) — из .env, если он есть
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Эти два значения задаёт compose: адрес Qdrant во внутренней сети и
+      # прослушивание всех интерфейсов контейнера — .env их не перекрывает
+      WINE_QDRANT_URL: http://qdrant:6333
+      WINE_API_HOST: 0.0.0.0
+      WINE_API_PORT: "8080"
+    ports:
+      - "${WINE_API_PORT:-8080}:8080"
+    volumes:
+      - ./models:/app/models:ro
+      # каталог — на запись: сервис кладёт сюда кэш уменьшенных эталонов для VLM
+      - ./data/catalog:/app/data/catalog
+      - ./data/feedback:/app/data/feedback
+
+  scraper:
+    build:
+      context: .
+      dockerfile: services/catalog-scraper/Dockerfile
+    image: wines-scraper
+    profiles: [init]
+    # Парсеру нужен только интернет, не сеть compose. Сеть хоста — чтобы
+    # работал прокси вида http://127.0.0.1:PORT, если выход только через него
+    network_mode: host
+    environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+    volumes:
+      - ./data/catalog:/app/data/catalog
+
+  indexer:
+    build:
+      context: .
+      dockerfile: services/indexer/Dockerfile
+    image: wines-indexer
+    <<: *gpu
+    profiles: [init]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WINE_QDRANT_URL: http://qdrant:6333
+    volumes:
+      - ./models:/app/models:ro
+      - ./data/catalog:/app/data/catalog:ro

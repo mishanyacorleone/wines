@@ -1,0 +1,248 @@
+{
+ "slug": "esse-gevyurtstraminer-beloe-suhoe-12",
+ "url": "https://vino-svoe.ru/wines/esse-gevyurtstraminer-beloe-suhoe-12",
+ "title": "Гевюрцтраминер",
+ "manufacturer": "ESSE",
+ "category": "Белое сухое",
+ "region": "Крым",
+ "grapes": [
+  "Гевюрцтраминер"
+ ],
+ "alcohol": 12.0,
+ "public_rating": null,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_gevyurtstraminer_beloe_suhoe_12_c0993e07dc.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Светло-желтый",
+ "temperature": "10-12",
+ "dishes": [
+  "Легкие закуски",
+  "Рыба и морепродукты",
+  "Салаты",
+  "Сыры"
+ ],
+ "description": "Вкус: Приятное длительное послевкусие с пряным окончанием. Грейпфрут, цитрусовые. Лайм, спелый грейпфрут.",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Traminer_rozovyj_1b5cafd2a9.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Gevyurcztraminer_0266e6c621.webp",
+ "sommelier": {
+  "summary": "Белое сухое, среднее тело (12%); подавать при 10–12 °C; к блюдам: легкие закуски, рыба и морепродукты, салаты.",
+  "style": {
+   "key": "white",
+   "color": "Белое",
+   "sweetness": "сухое",
+   "sparkling": false,
+   "body": "среднее",
+   "body_level": 2
+  },
+  "serving": {
+   "temperature": "10–12 °C",
+   "temperature_min": 10,
+   "temperature_max": 12,
+   "tip": "Достаньте из холодильника за 15–20 минут до подачи",
+   "glass": "Бокал для белого вина",
+   "aeration": null
+  },
+  "alcohol": {
+   "value": 12.0,
+   "note": "Умеренная крепость — универсально к ужину"
+  },
+  "pairings": [
+   {
+    "dish": "Легкие закуски",
+    "icon": "🫒",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/legkie_zakuski_e5a2dedbf7.webp",
+    "tip": "Брускетты, оливки, хумус, овощные чипсы"
+   },
+   {
+    "dish": "Рыба и морепродукты",
+    "icon": "🐟",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/ryba_moreprodukty_e57b445d95.webp",
+    "tip": "Белая рыба на пару или гриле, лосось в сливочном соусе"
+   },
+   {
+    "dish": "Салаты",
+    "icon": "🥗",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/salat_1afebb2167.webp",
+    "tip": "Салаты с лёгкой заправкой, свежие овощи и зелень"
+   },
+   {
+    "dish": "Сыры",
+    "icon": "🧀",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+    "tip": "Козий сыр, фета, моцарелла, бри и камамбер"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "vinodelnya-myshako-quintessence-gevyurtstraminer-beloe-suhoe-128",
+   "url": "https://vino-svoe.ru/wines/vinodelnya-myshako-quintessence-gevyurtstraminer-beloe-suhoe-128",
+   "title": "Quintessence. Гевюрцтраминер",
+   "manufacturer": "Мысхако",
+   "category": "Белое сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Гевюрцтраминер"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_myshako_quintessence_gevyurtstraminer_beloe_suhoe_128_2bf3d48221.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тот же сорт: Гевюрцтраминер",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "vinodelnya-myshako-sesto-senso-tropicheskiy-vzryv-gevyurtstraminer-beloe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/vinodelnya-myshako-sesto-senso-tropicheskiy-vzryv-gevyurtstraminer-beloe-suhoe-12",
+   "title": "Sesto Senso. Тропический взрыв",
+   "manufacturer": "Мысхако",
+   "category": "Белое сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Гевюрцтраминер"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_myshako_sesto_senso_tropicheskiy_vzryv_gevyurtstraminer_beloe_suhoe_12_a6df063535.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тот же сорт: Гевюрцтраминер",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "uppa-winery-gevyurtstraminer-muskat-beloe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/uppa-winery-gevyurtstraminer-muskat-beloe-suhoe-14",
+   "title": "Гевюрцтраминер - Мускат",
+   "manufacturer": "Uppa Winery",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Гевюрцтраминер"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/uppa_winery_gevyurtstraminer_muskat_beloe_suhoe_14_0795455a8d.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тот же сорт: Гевюрцтраминер",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "vinogradniki-gay-kodzora-gewurztraminer-de-gai-kodzor-gevyurtstraminer-beloe-polusuhoe-135",
+   "url": "https://vino-svoe.ru/wines/vinogradniki-gay-kodzora-gewurztraminer-de-gai-kodzor-gevyurtstraminer-beloe-polusuhoe-135",
+   "title": "Gewurztraminer de Gai-Kodzor",
+   "manufacturer": "Виноградники Гай-Кодзора",
+   "category": "Белое полусухое",
+   "region": "Кубань",
+   "grapes": [
+    "Гевюрцтраминер"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinogradniki_gay_kodzora_gewurztraminer_de_gai_kodzor_gevyurtstraminer_beloe_polusuhoe_135_2e99cb319b.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Гевюрцтраминер",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "chateau-tamagne-eno-traminer-i-shardone",
+   "url": "https://vino-svoe.ru/wines/chateau-tamagne-eno-traminer-i-shardone",
+   "title": "Chateau Tamagne Eno Траминер и Шардоне",
+   "manufacturer": "Кубань-Вино",
+   "category": "Белое сухое",
+   "region": "Кубань",
+   "grapes": [
+    "Гевюрцтраминер",
+    "Шардоне"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Chateau_Tamagne_Eno_Traminer_i_Shardone_bbb5a80c54.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тот же сорт: Гевюрцтраминер",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "esse-pino-gri-beloe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/esse-pino-gri-beloe-suhoe-12",
+   "title": "Пино Гри",
+   "manufacturer": "ESSE",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Пино Гри"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_pino_gri_beloe_suhoe_12_8bf3160446.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "esse-sovinon-blan-beloe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/esse-sovinon-blan-beloe-suhoe-12",
+   "title": "Совиньон Блан",
+   "manufacturer": "ESSE",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Совиньон Блан"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_sovinon_blan_beloe_suhoe_12_399b808abd.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "belmas-winery-viognier-belmas-vione-beloe-suhoe-122",
+   "url": "https://vino-svoe.ru/wines/belmas-winery-viognier-belmas-vione-beloe-suhoe-122",
+   "title": "Viognier Belmas",
+   "manufacturer": "Belmas Winery",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Вионье"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belmas_winery_viognier_belmas_vione_beloe_suhoe_122_555561eab4.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже белое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  }
+ ]
+}

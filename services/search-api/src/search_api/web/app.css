@@ -1,0 +1,497 @@
+/* Сканер вина — в стилистике vino-svoe.ru.
+   Значения сняты с мобильной карточки вина на сайте (computed styles):
+   классы и размеры повторяют .core-header, .wine-main-title-block,
+   .wine-detail-info, .wine-mobile-hero-block__card, .wine-dish-item,
+   .wine-item_s, .core-header__mob-search-btn. */
+
+:root {
+  --ink: #2C2A28;          /* основной текст */
+  --ink-2: #423F3C;
+  --muted: #857E79;        /* подписи, ссылки подвала */
+  --muted-2: #9A948F;      /* копирайт */
+  --faint: #AEA9A5;        /* производитель в карточке похожего вина */
+  --line: #EBE9E9;
+  --wine: #8F3D42;         /* акцент: ссылки, иконки в кругах */
+  --wine-btn: #7B3528;     /* ui-button_primary */
+  --cream: #FDF9ED;        /* блоки-карточки */
+  --gold: #F8ECC9;         /* рейтинг, блюда */
+  --paper: #FEFDFA;        /* фон страницы и подвала */
+  --white: #FFFFFF;
+  --header-glass: rgba(239, 219, 198, .3);
+
+  --serif: "Playfair Display", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --shadow-pill: 0 1px 2px rgba(108, 85, 15, .1), 0 4px 4px rgba(108, 85, 15, .05), 0 0 20px rgba(108, 85, 15, .1);
+  --shadow-thumb: 0 23px 6px rgba(190, 159, 75, 0), 0 15px 6px rgba(190, 159, 75, .01), 0 8px 6px rgba(190, 159, 75, .05),
+                  0 4px 4px rgba(190, 159, 75, .09), 0 1px 2px rgba(190, 159, 75, .1);
+  --shadow-elevated: 0 36px 12px rgba(2, 3, 6, .01), 0 24px 8px rgba(2, 3, 6, .01), 0 6px 8px rgba(2, 3, 6, .03),
+                     0 4px 4px rgba(2, 3, 6, .04), 0 1px 2px rgba(2, 3, 6, .05);
+  --gutter: 24px;
+  --maxw: 600px;
+}
+
+* { box-sizing: border-box; }
+/* атрибут hidden сильнее любого display у класса (.camera, .search-modal, .sheet…) */
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; background: var(--paper); }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 16px/normal var(--sans); -webkit-font-smoothing: antialiased;
+}
+img { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; }
+p { margin: 0; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.i { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Шапка (.core-header) ────────────────────────────────────── */
+.core-header { position: fixed; top: 0; left: 0; right: 0; z-index: 30; pointer-events: none; }
+.core-container { max-width: calc(var(--maxw) + 2 * var(--gutter)); margin: 0 auto; padding: 0 var(--gutter); }
+.core-header__wrapper {
+  pointer-events: auto; display: flex; align-items: center; justify-content: space-between;
+  height: 60px; margin-top: max(24px, env(safe-area-inset-top)); padding: 10px 16px; border-radius: 100px;
+  background: var(--header-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.ui-logo { display: block; height: 40px; }
+.svoe-vino-logo { width: 160px; height: 40px; }
+.logo-fallback { font: 600 20px/40px var(--serif); color: var(--ink); }
+.core-header__container { display: flex; align-items: center; gap: 6px; }
+/* На телефоне в шапке три кнопки (камера, лупа, меню) вместо двух, как на
+   сайте: чтобы они влезли в 375 px, кнопки-иконки уже, логотип чуть меньше */
+@media (max-width: 419px) {
+  .core-header__container { gap: 2px; }
+  .core-header__container .ui-button_transparent { width: 40px; padding: 0 8px; }
+  .ui-logo, .svoe-vino-logo { height: 36px; width: 144px; }
+}
+
+.demo-banner {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 24px max(10px, env(safe-area-inset-bottom));
+  background: var(--gold); color: var(--ink); font-size: 13px; line-height: 18px; text-align: center;
+  box-shadow: 0 -4px 16px rgba(108, 85, 15, .12);
+}
+.demo-banner code { font-size: 12px; background: rgba(255, 255, 255, .6); padding: 1px 6px; border-radius: 6px; }
+body.demo { padding-bottom: 72px; }
+
+/* ── Кнопки (.ui-button) ─────────────────────────────────────── */
+.ui-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; cursor: pointer;
+  text-decoration: none; font-size: 16px; line-height: 24px; font-weight: 500; text-align: center;
+  -webkit-tap-highlight-color: transparent; transition: background-color .15s, transform .1s, box-shadow .15s;
+}
+.ui-button:active { transform: scale(.98); }
+.ui-button:focus-visible, .wine-item:focus-visible, .wine-dish-item:focus-visible,
+.alt-row:focus-visible, .viewfinder:focus-visible, .core-header-nav__link:focus-visible, .core-header__mobile-nav-link:focus-visible { outline: 2px solid var(--wine); outline-offset: 3px; }
+.ui-button_transparent { background: transparent; color: var(--wine); width: 44px; height: 44px; border-radius: 12px; padding: 0 10px; }
+.ui-button_primary { background: var(--wine-btn); color: var(--white); }
+.ui-button_primary:hover { background: #6A2D22; }
+.ui-button_round { border-radius: 999px; padding: 8px 16px; height: 40px; }
+.ui-button_elevated { background: var(--white); color: var(--wine); box-shadow: var(--shadow-elevated); }
+.ui-button_large { min-height: 56px; padding: 16px 24px; border-radius: 999px; width: 100%; }
+.ui-button_elevated.ui-button_large { border-radius: 16px; }
+
+/* ── Меню разделов: в строке на широком экране, на весь экран на телефоне ── */
+.core-header__bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; height: 40px; }
+.core-header-nav { display: none; }
+.core-header-nav__link { margin-right: 24px; color: var(--ink); font-size: 16px; line-height: 24px; text-decoration: none; white-space: nowrap; }
+.core-header-nav__link:last-child { margin-right: 0; }
+.core-header-nav__link:hover { color: var(--wine); }
+.core-header__icon-search, .core-header__icon-close { display: none; }
+.core-header__mobile-nav { display: none; }
+
+.core-header--open .core-header__wrapper {
+  flex-direction: column; align-items: stretch; height: calc(100dvh - 16px); margin: 8px -16px 0; padding: 24px;
+  border-radius: 24px; backdrop-filter: blur(50px); -webkit-backdrop-filter: blur(50px);
+  background: rgba(239, 219, 198, .3);
+}
+.core-header--open .core-header__mobile-nav {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; flex: 1;
+}
+.core-header__mobile-nav-link { font: 500 28px/35px var(--serif); color: var(--ink); text-decoration: none; text-align: center; }
+.core-header--open .core-header__icon-menu { display: none; }
+.core-header--open .core-header__icon-close { display: block; }
+body.menu-open { overflow: hidden; }
+
+@media (min-width: 1200px) {
+  :root { --maxw: 1160px; }
+  .core-header__wrapper { padding: 10px 24px; }
+  .core-header-nav { display: flex; }
+  .core-header__search { display: none; }
+  .core-header__icon-menu { display: none; }
+  .core-header__icon-search { display: block; }
+}
+
+/* ── Экраны ──────────────────────────────────────────────────── */
+.main { max-width: calc(var(--maxw) + 2 * var(--gutter)); margin: 0 auto; padding: 132px var(--gutter) 64px; }
+.screen { display: none; }
+.screen--active { display: block; animation: fade-in .3s ease; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ── Заголовок (.wine-main-title-block) ──────────────────────── */
+.title-block { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.title-block__title { margin: 0 0 8px; font: 500 36px/45px var(--serif); color: var(--ink); }
+.title-block__subtitle, .title-block__maker { margin: 0 0 24px; font-size: 16px; line-height: 24px; color: var(--wine); text-decoration: none; }
+.rating-chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; border-radius: 24px;
+  background: var(--gold); color: var(--wine); font-size: 16px; line-height: 24px; font-weight: 600; text-decoration: none;
+}
+.title-block__lead { max-width: 440px; font-size: 16px; line-height: 24px; color: var(--ink-2); }
+.rating-chip .i--chevron { width: 18px; height: 18px; }
+.status-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; padding: 4px 12px 4px 8px; border-radius: 16px;
+  background: var(--gold); color: var(--wine); font-size: 14px; line-height: 20px; font-weight: 600;
+}
+.status-chip .i { width: 18px; height: 18px; }
+
+/* ── Герой карточки ──────────────────────────────────────────── */
+/* Телефон: заголовок → бутылка → факты → фото винограда и плашки.
+   .hero__left растворяется (display: contents), чтобы бутылка встала между
+   заголовком и фактами; на широком экране — раскладка как на сайте, ниже */
+.hero { display: flex; flex-direction: column; }
+.hero__left { display: contents; }
+.hero__title { order: 1; }
+.hero__bottle { order: 2; }
+.hero__facts { order: 3; }
+.hero__stage { order: 4; }
+
+/* ── Бутылка (.wine-mobile-hero-block__bottle) ───────────────── */
+.bottle { padding: 48px 0; display: flex; justify-content: center; }
+.bottle img { height: 405px; width: auto; object-fit: contain; }
+.bottle__empty { height: 240px; display: grid; place-items: center; color: var(--faint); }
+.bottle__empty .i { width: 64px; height: 64px; stroke-width: 1.2; }
+
+/* ── Кремовые блоки (.wine-detail-info, карточки героя) ─────── */
+.info-card { display: flex; flex-direction: column; gap: 24px; padding: 32px; border-radius: 32px; background: var(--cream); margin-top: 16px; }
+.detail { display: flex; align-items: flex-start; gap: 16px; }
+.detail__image {
+  width: 44px; height: 44px; flex: none; border-radius: 16px; background: var(--white); border: 1.6px solid var(--white);
+  box-shadow: var(--shadow-thumb); object-fit: cover; overflow: hidden;
+}
+.detail__image--icon { display: grid; place-items: center; color: var(--wine); }
+.detail__image--icon .i { width: 22px; height: 22px; }
+.detail__image--swatch { background: var(--swatch, #E9A36B); }
+.detail > div { padding-top: 3px; min-width: 0; }
+.detail__label { font-size: 12px; line-height: 15px; color: var(--muted); }
+.detail__value { font-size: 16px; line-height: 24px; color: var(--ink); }
+
+.visual { margin-top: 16px; height: 223px; border-radius: 32px; overflow: hidden; background: var(--cream); }
+.visual img { width: 100%; height: 100%; object-fit: cover; }
+
+.hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+.hero-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 24px; border-radius: 32px; background: var(--cream); text-align: center;
+}
+.round-icon {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--wine); color: rgba(255, 255, 255, .9);
+  display: grid; place-items: center; flex: none; margin-bottom: 8px;
+}
+.round-icon .i { width: 22px; height: 22px; }
+.hero-card__label { font-size: 14px; line-height: 21px; color: var(--ink); }
+.hero-card__value { font: 500 28px/35px var(--serif); color: var(--ink); white-space: nowrap; }
+
+/* ── Блюда (.wine-mobile-hero-block__card--dishes, .wine-dish-item) */
+.dishes-card { display: flex; gap: 12px; padding: 24px; border-radius: 32px; background: var(--cream); margin-top: 16px; }
+.dishes-card__left { width: 79px; flex: none; display: flex; flex-direction: column; }
+.dishes-card__left .round-icon { width: 44px; height: 44px; margin-bottom: 12px; }
+.dishes-card__label { font-size: 14px; line-height: 21px; color: var(--ink); }
+.dishes-card > .slider { flex: 1; min-width: 0; }
+.dishes-card__slider {
+  display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 16px;
+}
+.dishes-card__slider::-webkit-scrollbar { display: none; }
+.wine-dish-item {
+  width: 90px; min-height: 140px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 12px 8px; border: 0; border-radius: 16px; background: var(--gold); cursor: pointer; scroll-snap-align: start;
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); transition: transform .1s;
+}
+.wine-dish-item:active { transform: scale(.97); }
+.wine-dish-item__image { width: 72px; height: 72px; border-radius: 999px; object-fit: cover; flex: none; background: rgba(255, 255, 255, .6); }
+.wine-dish-item__emoji { display: grid; place-items: center; font-size: 32px; }
+.wine-dish-item__name { font-size: 10px; line-height: 12px; font-weight: 600; color: var(--muted); text-align: center; }
+
+/* ── Оценка «это ваше вино?» (как .wine-public-rating) ───────── */
+.ask-card { margin-top: 16px; padding: 32px; border-radius: 32px; background: var(--cream); display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+.ask-card__title { font: 500 20px/25px var(--serif); color: var(--ink); }
+.ask-card__btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ask-card .ui-button { min-height: 44px; padding: 10px 20px; border-radius: 999px; }
+.ask-card__done { font-size: 16px; line-height: 24px; color: var(--ink-2); }
+
+/* ── Разделы ─────────────────────────────────────────────────── */
+.section { padding-top: 64px; }
+.section__title { margin: 0 0 24px; font: 500 32px/40px var(--serif); color: var(--ink); }
+.section__lead { font-size: 18px; line-height: 27px; color: var(--ink); margin-bottom: 16px; }
+
+.body-scale { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.body-scale i { width: 18px; height: 6px; border-radius: 3px; background: var(--line); }
+.body-scale i.on { background: var(--wine); }
+
+.pairing { display: flex; align-items: center; gap: 16px; width: 100%; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; }
+.pairing__image { width: 56px; height: 56px; border-radius: 999px; object-fit: cover; flex: none; background: var(--gold); }
+.pairing__dish, .pairing__tip { display: block; }
+.pairing__dish { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ink); }
+.pairing__tip { font-size: 14px; line-height: 21px; color: var(--muted); }
+.pairing .i { margin-left: auto; color: var(--wine); width: 20px; height: 20px; }
+
+/* ── Описание (.wine-page__description) ──────────────────────── */
+.description__text {
+  font-size: 18px; line-height: 27px; color: var(--ink); white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+}
+.description--open .description__text { display: block; }
+.link-btn { margin-top: 12px; padding: 0; border: 0; background: none; color: var(--wine); font-size: 16px; line-height: 24px; cursor: pointer; }
+.back-link { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 24px; padding: 0; border: 0; background: none; color: var(--wine); font-size: 16px; line-height: 24px; cursor: pointer; }
+.back-link .i { width: 20px; height: 20px; }
+
+.stack { display: grid; gap: 12px; margin-top: 24px; }
+
+/* ── Похожие вина (.wine-item_s) ─────────────────────────────── */
+.carousel {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 246px; gap: 16px; overflow-x: auto;
+  scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 8px;
+}
+.carousel::-webkit-scrollbar { display: none; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid-3 .wine-item__img { height: 190px; }
+.wine-item {
+  position: relative; display: flex; flex-direction: column; gap: 16px; padding: 16px; border: 0; border-radius: 16px;
+  background: var(--cream); text-align: left; cursor: pointer; scroll-snap-align: start; min-width: 0; text-decoration: none;
+}
+.wine-item__img { height: 260px; display: flex; justify-content: center; align-items: flex-end; padding-top: 24px; }
+.grid-2 .wine-item__img { height: 190px; }
+.wine-item__img img { height: 100%; width: auto; object-fit: contain; }
+.wine-item__title, .wine-item__maker { display: block; }
+.wine-item__title { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wine-item__maker { margin-top: 2px; font-size: 14px; line-height: 17.5px; color: var(--faint); }
+.wine-item-rating {
+  position: absolute; top: 16px; left: 16px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px 4px 8px; border-radius: 16px; background: var(--gold); color: var(--ink);
+  font-size: 12px; line-height: 16px; font-weight: 600;
+}
+.wine-item-rating .i { width: 16px; height: 16px; color: var(--wine); }
+.wine-item-rating--accent { color: var(--wine); }
+.reasons { display: flex; flex-wrap: wrap; gap: 4px; }
+.reason { font-size: 12px; line-height: 16px; padding: 4px 8px; border-radius: 16px; background: var(--white); color: var(--muted); }
+
+/* ── Строки вариантов в шторке ───────────────────────────────── */
+.alt-row {
+  display: grid; grid-template-columns: 56px 1fr 20px; align-items: center; gap: 16px; width: 100%;
+  padding: 12px 16px 12px 12px; border: 0; border-radius: 16px; background: var(--cream); text-align: left; cursor: pointer;
+}
+.alt-row__img { width: 56px; height: 80px; display: flex; justify-content: center; }
+.alt-row__img img { height: 100%; width: auto; object-fit: contain; }
+.alt-row__title, .alt-row__meta { display: block; }
+.alt-row__title { font-size: 16px; line-height: 22px; font-weight: 600; color: var(--ink); }
+.alt-row__meta { font-size: 14px; line-height: 17.5px; color: var(--faint); margin-top: 2px; }
+.alt-row .i { color: var(--wine); width: 20px; height: 20px; }
+
+/* ── «Не найдено» ────────────────────────────────────────────── */
+.photo-thumb { width: 120px; height: 160px; margin: 8px auto 32px; border-radius: 32px; object-fit: cover; background: var(--cream); box-shadow: var(--shadow-thumb); }
+.notfound-lead { max-width: 420px; margin: -8px auto 0; text-align: center; font-size: 16px; line-height: 24px; color: var(--ink-2); }
+
+/* ── Распознавание ───────────────────────────────────────────── */
+.viewfinder {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  width: 100%; height: 360px; margin-top: 32px; border: 0; border-radius: 32px; background: var(--cream); cursor: pointer; overflow: hidden;
+}
+.viewfinder__frame { position: absolute; inset: 24px; border-radius: 24px; pointer-events: none;
+  background:
+    linear-gradient(var(--wine), var(--wine)) top left / 32px 2px, linear-gradient(var(--wine), var(--wine)) top left / 2px 32px,
+    linear-gradient(var(--wine), var(--wine)) top right / 32px 2px, linear-gradient(var(--wine), var(--wine)) top right / 2px 32px,
+    linear-gradient(var(--wine), var(--wine)) bottom left / 32px 2px, linear-gradient(var(--wine), var(--wine)) bottom left / 2px 32px,
+    linear-gradient(var(--wine), var(--wine)) bottom right / 32px 2px, linear-gradient(var(--wine), var(--wine)) bottom right / 2px 32px;
+  background-repeat: no-repeat; opacity: .6; }
+.viewfinder__bottle { width: 60px; height: 160px; fill: none; stroke: var(--wine); stroke-width: 2; opacity: .75; }
+.viewfinder__hint { font-size: 14px; line-height: 21px; color: var(--muted); }
+.actions { display: grid; gap: 12px; margin-top: 24px; }
+.actions .ui-button_large { min-height: 56px; }
+
+.loading__photo {
+  position: relative; width: min(260px, 70vw); aspect-ratio: 3 / 4; margin: 16px auto 0;
+  border-radius: 32px; overflow: hidden; background: var(--cream);
+}
+.loading__photo img { width: 100%; height: 100%; object-fit: cover; }
+.loading__scanline {
+  position: absolute; left: 0; right: 0; height: 30%;
+  background: linear-gradient(180deg, rgba(248, 236, 201, 0), rgba(248, 236, 201, .75) 85%, rgba(143, 61, 66, .9) 100%);
+  animation: scan 1.6s ease-in-out infinite alternate;
+}
+@keyframes scan { from { top: -30%; } to { top: 100%; } }
+
+/* ── Ленты со стрелками ──────────────────────────────────────── */
+/* Стрелки — только там, где есть мышь: на тач-экране ленту листают пальцем */
+.slider { position: relative; }
+.slider__btn { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .slider__btn {
+    position: absolute; top: 50%; z-index: 2; display: grid; place-items: center; width: 40px; height: 40px;
+    border: 0; border-radius: 50%; background: var(--white); color: var(--wine); cursor: pointer;
+    box-shadow: var(--shadow-elevated); transform: translateY(-50%); transition: opacity .15s, background-color .15s;
+  }
+  .slider__btn:hover { background: var(--gold); }
+  .slider__btn .i { width: 20px; height: 20px; }
+  .slider__btn--prev { left: -12px; }
+  .slider__btn--prev .i { transform: rotate(180deg); }
+  .slider__btn--next { right: -12px; }
+  .slider__btn:disabled { opacity: 0; pointer-events: none; }
+  .slider--static .slider__btn { display: none; }
+}
+
+/* ── Шторка ──────────────────────────────────────────────────── */
+.sheet { position: fixed; inset: 0; z-index: 50; }
+.sheet__backdrop { position: absolute; inset: 0; background: rgba(44, 42, 40, .45); animation: fade .2s ease; }
+.sheet__panel {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; display: flex; flex-direction: column;
+  max-width: 648px; margin: 0 auto; background: var(--paper);
+  border-radius: 32px 32px 0 0; padding: 8px var(--gutter) max(24px, env(safe-area-inset-bottom));
+  animation: slide-up .25s cubic-bezier(.2, .8, .2, 1);
+}
+.sheet__grip { width: 40px; height: 4px; border-radius: 2px; background: #C2BFBC; margin: 4px auto 12px; }
+.sheet__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.sheet__title { margin: 6px 0 16px; font: 500 24px/30px var(--serif); color: var(--ink); }
+.sheet__close { color: var(--ink); }
+.sheet__body { overflow-y: auto; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 8px; display: grid; gap: 12px; align-content: start; }
+.sheet__hint { font-size: 14px; line-height: 21px; color: var(--muted); }
+@keyframes slide-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; } }
+
+/* ── Камера ──────────────────────────────────────────────────── */
+.camera { position: fixed; inset: 0; z-index: 70; background: #111; display: flex; flex-direction: column; }
+.camera__video { flex: 1; width: 100%; min-height: 0; object-fit: cover; background: #111; }
+.camera__frame {
+  position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); width: min(62vw, 340px); aspect-ratio: 3 / 4;
+  border-radius: 24px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .35); border: 2px solid rgba(255, 255, 255, .85); pointer-events: none;
+}
+.camera__hint {
+  position: absolute; left: 0; right: 0; top: max(28px, env(safe-area-inset-top)); text-align: center; color: var(--white);
+  font-size: 14px; line-height: 21px; padding: 0 72px; text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+}
+.camera__bar {
+  display: flex; align-items: center; justify-content: space-around; gap: 24px; flex: none;
+  padding: 20px 24px max(28px, env(safe-area-inset-bottom)); background: #111;
+}
+.camera__shutter {
+  width: 72px; height: 72px; border-radius: 50%; border: 4px solid var(--white); background: var(--wine-btn);
+  box-shadow: inset 0 0 0 3px #111; cursor: pointer; transition: transform .1s;
+}
+.camera__shutter:active { transform: scale(.94); }
+.camera__side, .camera__close {
+  width: 48px; height: 48px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer;
+  background: rgba(255, 255, 255, .14); color: var(--white);
+}
+.camera__side--off { visibility: hidden; }
+.camera__close { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; }
+.camera :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* ── Поиск (.app-modal-search) ───────────────────────────────── */
+.search-modal { position: fixed; inset: 0; z-index: 60; }
+.search-modal__backdrop { position: absolute; inset: 0; background: rgba(44, 42, 40, .25); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); animation: fade .2s ease; }
+.search-modal__panel {
+  position: relative; max-width: 728px; margin: max(24px, env(safe-area-inset-top)) auto 0; padding: 0 var(--gutter);
+  display: flex; flex-direction: column; max-height: calc(100dvh - 48px);
+}
+.search-modal__field {
+  display: flex; align-items: center; gap: 8px; height: 60px; padding: 0 8px 0 20px; border-radius: 100px;
+  background: var(--white); box-shadow: var(--shadow-pill); color: var(--wine);
+}
+.search-modal__input {
+  flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent;
+  font: 400 16px/24px var(--sans); color: var(--ink);
+}
+.search-modal__input::-webkit-search-cancel-button { display: none; }
+.search-modal__results {
+  margin-top: 12px; overflow-y: auto; border-radius: 24px; background: var(--paper); box-shadow: var(--shadow-pill);
+  display: grid; gap: 8px; padding: 12px;
+}
+.search-modal__results:empty { display: none; }
+.search-modal__site {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 16px;
+  color: var(--wine); text-decoration: none; font-size: 16px; line-height: 24px;
+}
+.search-modal__site:hover { background: var(--cream); }
+.search-modal__empty { padding: 12px 16px; color: var(--muted); font-size: 16px; line-height: 24px; }
+
+/* ── Подвал (.core-footer) ───────────────────────────────────── */
+.core-footer { background: var(--paper); }
+.core-footer__bottom {
+  max-width: calc(var(--maxw) + 2 * var(--gutter)); margin: 0 auto; padding: 24px var(--gutter) 48px;
+  display: grid; gap: 8px; border-top: 1px solid var(--line);
+}
+.core-footer__link { color: var(--muted); font-size: 16px; line-height: 24px; text-decoration: none; }
+.core-footer__copy { color: var(--muted-2); font-size: 16px; line-height: 24px; }
+.core-footer__warn { color: var(--muted); font-size: 12px; line-height: 16px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; max-width: calc(100% - 48px);
+  padding: 12px 20px; border-radius: 999px; background: var(--ink); color: var(--white); font-size: 14px; line-height: 20px;
+}
+.muted { color: var(--muted); }
+.skeleton { height: 120px; border-radius: 16px; background: linear-gradient(90deg, var(--cream), #F6EEDA, var(--cream)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── Десктоп: окно по центру вместо шторки снизу ─────────────── */
+@media (min-width: 768px) {
+  .sheet { display: grid; place-items: center; padding: 24px; }
+  .sheet__panel {
+    position: relative; left: auto; right: auto; bottom: auto; z-index: 1;
+    width: min(760px, 100%); max-height: min(84vh, 860px); margin: 0;
+    border-radius: 32px; padding: 24px 32px 32px; animation: pop .2s ease;
+  }
+  .sheet__grip { display: none; }
+  .sheet__title { font-size: 28px; line-height: 35px; }
+}
+@keyframes pop { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ── Десктоп: карточка вина как на сайте ─────────────────────── */
+@media (min-width: 1200px) {
+  /* Текстовые блоки — узкой колонкой по центру, как на сайте; герой и ленты — во всю ширину */
+  #screen-scan, #screen-loading { max-width: 600px; margin-inline: auto; }
+  #screen-result > * { max-width: 760px; margin-inline: auto; }
+  #screen-result > .hero, #screen-result > .section--wide { max-width: none; }
+
+  .hero {
+    position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    min-height: 560px; margin: 32px 0 24px;
+  }
+  /* Слева — кремовая карточка: заголовок и факты; справа запас под бутылку */
+  .hero__left {
+    display: flex; flex-direction: column; justify-content: center; gap: 32px;
+    padding: 48px 140px 48px 56px; border-radius: 32px; background: var(--cream);
+  }
+  .hero__title { align-items: flex-start; text-align: left; }
+  .hero__title .title-block__title { font-size: 44px; line-height: 52px; }
+  .hero__facts { margin: 0; padding: 0; background: none; border-radius: 0; }
+
+  /* По центру — бутылка поверх стыка, выходит за край карточек сверху и снизу */
+  .hero__bottle {
+    position: absolute; left: 50%; top: -40px; bottom: -40px; z-index: 2; padding: 0;
+    transform: translateX(-50%); pointer-events: none;
+  }
+  .hero__bottle img { height: 100%; width: auto; filter: drop-shadow(0 24px 24px rgba(44, 42, 40, .18)); }
+
+  /* Справа — фото винограда во весь блок, поверх него плашки */
+  .hero__stage { position: relative; overflow: hidden; border-radius: 32px; background: var(--cream); }
+  .hero__stage .visual { position: absolute; inset: 0; height: auto; margin: 0; border-radius: 0; }
+  .hero__cards {
+    position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: center;
+    gap: 16px; padding: 40px 40px 40px 150px;
+  }
+  .hero__cards .hero-cards { margin: 0; }
+  .hero__cards .hero-card, .hero__cards .dishes-card {
+    background: rgba(253, 249, 237, .9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .hero__cards .dishes-card { margin: 0; }
+
+  /* Ленты во всю ширину: четыре вина в ряд, стрелки по краям */
+  .section--wide .carousel { grid-auto-columns: calc((100% - 3 * 16px) / 4); margin: 0; padding: 0 0 8px; }
+  .section--wide .slider__btn--prev { left: -20px; }
+  .section--wide .slider__btn--next { right: -20px; }
+  .section--wide .grid-2 { grid-template-columns: repeat(5, 1fr); }
+}

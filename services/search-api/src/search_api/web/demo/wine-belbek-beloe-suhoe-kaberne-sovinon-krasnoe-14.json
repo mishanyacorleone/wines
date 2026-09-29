@@ -1,0 +1,241 @@
+{
+ "slug": "belbek-beloe-suhoe-kaberne-sovinon-krasnoe-14",
+ "url": "https://vino-svoe.ru/wines/belbek-beloe-suhoe-kaberne-sovinon-krasnoe-14",
+ "title": "Белое сухое",
+ "manufacturer": "Бельбек",
+ "category": "Красное сухое",
+ "region": "Крым",
+ "grapes": [
+  "Каберне Совиньон"
+ ],
+ "alcohol": 14.0,
+ "public_rating": null,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/belbek_beloe_suhoe_kaberne_sovinon_krasnoe_suhoe_14_82f8b0eda2.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Темно-рубиновый с рыжеватым отблеском",
+ "temperature": "16-18",
+ "dishes": [
+  "Выпечка и десерты",
+  "Мясо и стейки",
+  "Сыры"
+ ],
+ "description": "Вкус: Богатый, насыщенный, со зрелыми танинами, гармоничной кислотностью и продолжительным послевкусием. Наполненный тонами черной смородины, сушеной вишни, горького шоколада и сладкой ванили.",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Kaberne_Sovinon2_2b33e41092.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Kaberne_Sovinon3_39f7936b80.webp",
+ "sommelier": {
+  "summary": "Красное сухое, полнотелое тело (14%); подавать при 16–18 °C; к блюдам: выпечка и десерты, мясо и стейки, сыры.",
+  "style": {
+   "key": "red",
+   "color": "Красное",
+   "sweetness": "сухое",
+   "sparkling": false,
+   "body": "полнотелое",
+   "body_level": 3
+  },
+  "serving": {
+   "temperature": "16–18 °C",
+   "temperature_min": 16,
+   "temperature_max": 18,
+   "tip": "Температура прохладной комнаты; в жару — 10–15 минут в холодильнике",
+   "glass": "Бордоский бокал — высокий, с большой чашей",
+   "aeration": "Дайте вину подышать 20–30 минут в декантере или бокале"
+  },
+  "alcohol": {
+   "value": 14.0,
+   "note": "Высокая крепость — лучше с сытными блюдами"
+  },
+  "pairings": [
+   {
+    "dish": "Выпечка и десерты",
+    "icon": "🍰",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/nesladkaya_vypechka_05bf04c48c.webp",
+    "tip": "Фруктовые и ягодные десерты"
+   },
+   {
+    "dish": "Мясо и стейки",
+    "icon": "🥩",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/myaso_442273df41.webp",
+    "tip": "Стейк, томлёная говядина, баранина — танины смягчают жир"
+   },
+   {
+    "dish": "Сыры",
+    "icon": "🧀",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+    "tip": "Твёрдые выдержанные: пармезан, гауда, чеддер, качотта"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "uppa-winery-pavel-shvets-cabernet-sauvignon-merlot-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/uppa-winery-pavel-shvets-cabernet-sauvignon-merlot-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Pavel Shvets. Cabernet Sauvignon - Merlot",
+   "manufacturer": "Uppa Winery",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/uppa_winery_pavel_shvets_cabernet_sauvignon_merlot_kaberne_sovinon_krasnoe_suhoe_14_da1b1f8614.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "shato-ay-danil-tramonto-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/shato-ay-danil-tramonto-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Трамонто",
+   "manufacturer": "Шато Ай-Даниль",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/shato_ay_danil_tramonto_kaberne_sovinon_krasnoe_suhoe_vyderzhannoe_14_63541d946c.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "artvin-kaberne-sovinon-grand-rezerv-krasnoe-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/artvin-kaberne-sovinon-grand-rezerv-krasnoe-suhoe-13",
+   "title": "Каберне Совиньон Гранд Резерв",
+   "manufacturer": "Артвин",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/artvin_kaberne_sovinon_grand_rezerv_krasnoe_suhoe_13_501fa25679.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "shato-ay-danil-presto-rezerv-kaberne-sovinon-krasnoe-suhoe-135",
+   "url": "https://vino-svoe.ru/wines/shato-ay-danil-presto-rezerv-kaberne-sovinon-krasnoe-suhoe-135",
+   "title": "Престо Резерв",
+   "manufacturer": "Шато Ай-Даниль",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 13.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/shato_ay_danil_presto_rezerv_kaberne_sovinon_krasnoe_suhoe_vyderzhannoe_135_2099ac281e.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "vaynkraft-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/vaynkraft-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Каберне Совиньон",
+   "manufacturer": "ВайнКрафт",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_kaberne_sovinon_krasnoe_suhoe_14_ae9402b920.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "toile-de-vin-cabernet-sauvignon",
+   "url": "https://vino-svoe.ru/wines/toile-de-vin-cabernet-sauvignon",
+   "title": "Toile de vin cabernet sauvignon",
+   "manufacturer": "AYA Organic Wine & Vineyards",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/toile_de_vin_cabernet_sauvignon_cfd349369d.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "esse-kaberne-otbornoe-kaberne-sovinon-krasnoe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/esse-kaberne-otbornoe-kaberne-sovinon-krasnoe-suhoe-12",
+   "title": "Каберне Отборное",
+   "manufacturer": "ESSE",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_kaberne_otbornoe_kaberne_sovinon_krasnoe_suhoe_12_1f8b96ac79.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "esse-kaberne-sovinon-krasnoe-suhoe-14",
+   "url": "https://vino-svoe.ru/wines/esse-kaberne-sovinon-krasnoe-suhoe-14",
+   "title": "Каберне Совиньон",
+   "manufacturer": "ESSE",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Каберне Совиньон"
+   ],
+   "alcohol": 14.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/esse_kaberne_sovinon_krasnoe_suhoe_14_2536b9976e.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже красное сухое",
+    "тот же сорт: Каберне Совиньон",
+    "тоже Крым"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,233 @@
+{
+ "slug": "oxana-istratova-wine-rkatsiteli-2023-oranzhevoe-suhoe-113",
+ "url": "https://vino-svoe.ru/wines/oxana-istratova-wine-rkatsiteli-2023-oranzhevoe-suhoe-113",
+ "title": "Ркацители 2023",
+ "manufacturer": "Oxana Istratova Wine",
+ "category": "Оранжевое сухое",
+ "region": "Крым",
+ "grapes": [
+  "Ркацители"
+ ],
+ "alcohol": 11.0,
+ "public_rating": null,
+ "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oxana_istratova_wine_rkatsiteli_2023_oranzhevoe_suhoe_113_ed2c3cbe36.webp",
+ "rank": null,
+ "confidence": null,
+ "reasons": [],
+ "color": "Янтарный",
+ "temperature": "10-12",
+ "dishes": [
+  "Кавказская кухня",
+  "Сыры"
+ ],
+ "description": "Вкус: Округлый, хорошая кислотность, мягкий танин, сухофрукты. Сухофрукты,курага, перепонки грецкого ореха, воск",
+ "region_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/krym_18db39fc91.webp",
+ "grape_image": "https://api.vino-svoe.ru/v1/img/str-api/88/88/resize/uploads/Rkacziteli1_5fa00630c0.webp",
+ "background_image": "https://api.vino-svoe.ru/v1/img/str-api/800/800/resize/uploads/Rkacziteli1_5fa00630c0.webp",
+ "sommelier": {
+  "summary": "Оранжевое сухое, лёгкое тело (11%); подавать при 10–12 °C; к блюдам: кавказская кухня, сыры.",
+  "style": {
+   "key": "orange",
+   "color": "Оранжевое",
+   "sweetness": "сухое",
+   "sparkling": false,
+   "body": "лёгкое",
+   "body_level": 1
+  },
+  "serving": {
+   "temperature": "10–12 °C",
+   "temperature_min": 10,
+   "temperature_max": 12,
+   "tip": "Достаньте из холодильника за 15–20 минут до подачи",
+   "glass": "Бокал для белого вина с широкой чашей",
+   "aeration": "Можно дать вину подышать 10–15 минут — аромат станет глубже"
+  },
+  "alcohol": {
+   "value": 11.0,
+   "note": "Умеренная крепость — универсально к ужину"
+  },
+  "pairings": [
+   {
+    "dish": "Кавказская кухня",
+    "icon": "🍢",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/kavkazskaya_kuhnya_0f18f731b5.webp",
+    "tip": "Хачапури, пхали, сыр сулугуни"
+   },
+   {
+    "dish": "Сыры",
+    "icon": "🧀",
+    "image": "https://api.vino-svoe.ru/v1/img/str-api/144/144/resize/uploads/syr_820e71a7c0.webp",
+    "tip": "Выдержанные и пикантные: пекорино, комте, сыры с плесенью"
+   }
+  ]
+ },
+ "similar": [
+  {
+   "slug": "vaynkraft-rkatsiteli-oranzh-oranzhevoe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/vaynkraft-rkatsiteli-oranzh-oranzhevoe-suhoe-12",
+   "title": "Ркацители Оранж",
+   "manufacturer": "ВайнКрафт",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vaynkraft_rkatsiteli_oranzh_oranzhevoe_suhoe_12_65fe9c2119.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тот же сорт: Ркацители",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "oxana-istratova-wine-rkatsiteli-2024-oranzhevoe-suhoe-12",
+   "url": "https://vino-svoe.ru/wines/oxana-istratova-wine-rkatsiteli-2024-oranzhevoe-suhoe-12",
+   "title": "Ркацители 2024",
+   "manufacturer": "Oxana Istratova Wine",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 12.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/oxana_istratova_wine_rkatsiteli_2024_oranzhevoe_suhoe_12_7a4aaf2a55.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тот же сорт: Ркацители",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "loco-cimbali-rkatsiteli-oranzhevoe-suhoe-13",
+   "url": "https://vino-svoe.ru/wines/loco-cimbali-rkatsiteli-oranzhevoe-suhoe-13",
+   "title": "Ркацители",
+   "manufacturer": "Loco Cimbali",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 13.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/loco_cimbali_rkatsiteli_oranzhevoe_suhoe_13_ebaa76e9a4.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тот же сорт: Ркацители",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "gevyurcztraminer-oranzh",
+   "url": "https://vino-svoe.ru/wines/gevyurcztraminer-oranzh",
+   "title": "Гевюрцтраминер Оранж",
+   "manufacturer": "Усадьба Перовских",
+   "category": "Оранжевое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Гевюрцтраминер"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 4.92,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Gevyurcztraminer_Oranzh_Usadba_Petovskih_f3d914f332.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тоже оранжевое сухое",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "rkacziteli-kvevri",
+   "url": "https://vino-svoe.ru/wines/rkacziteli-kvevri",
+   "title": "Ркацители Квеври",
+   "manufacturer": "Усадьба Перовских",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 12.0,
+   "public_rating": 4.5,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/ge_rkatsiteli_2b9412517f.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Ркацители",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "beloe-suhoe",
+   "url": "https://vino-svoe.ru/wines/beloe-suhoe",
+   "title": "Белое сухое",
+   "manufacturer": "Солнечная долина",
+   "category": "Белое сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 11.0,
+   "public_rating": 5.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/PU_Sjv7dn_M_Nil_H25_TO_9_Bcb_Am_GBET_cm_W_Ma_Cxit_V_l_m_G_Tr_RJ_KWX_9ci_Ui_Eg_Js_HYWY_2_Kt2y_Ed_Ew_Mm_XQTL_4_M_Eq_K3w_1a4256a4fa.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Ркацители",
+    "тоже Крым"
+   ]
+  },
+  {
+   "slug": "inkerman-muskatnoe-beloe",
+   "url": "https://vino-svoe.ru/wines/inkerman-muskatnoe-beloe",
+   "title": "Inkerman Мускатное белое",
+   "manufacturer": "Инкерманский ЗМВ",
+   "category": "Белое полусладкое",
+   "region": "Крым",
+   "grapes": [
+    "Мускат Янтарный",
+    "Ркацители"
+   ],
+   "alcohol": 10.0,
+   "public_rating": 3.0,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/Inkerman_muskatnoe_beloe_polusladkoe_092002be0d.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Ркацители",
+    "тоже Крым",
+    "к тем же блюдам"
+   ]
+  },
+  {
+   "slug": "vinodelnya-zhakov-rkatsiteli-eskeyp-krasnoe-suhoe-119",
+   "url": "https://vino-svoe.ru/wines/vinodelnya-zhakov-rkatsiteli-eskeyp-krasnoe-suhoe-119",
+   "title": "Ркацители Эскейп",
+   "manufacturer": "Винодельня Жаков",
+   "category": "Красное сухое",
+   "region": "Крым",
+   "grapes": [
+    "Ркацители"
+   ],
+   "alcohol": 11.0,
+   "public_rating": null,
+   "image_url": "https://api.vino-svoe.ru/v1/img/str-api/1160/1160/resize/uploads/vinodelnya_zhakov_rkatsiteli_eskeyp_krasnoe_suhoe_119_0b92b05d72.webp",
+   "rank": null,
+   "confidence": null,
+   "reasons": [
+    "тот же сорт: Ркацители",
+    "тоже Крым"
+   ]
+  }
+ ]
+}
