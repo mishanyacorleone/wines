@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -81,6 +82,13 @@ def compact_catalog(catalog_path: Path, images_dir: Path) -> set[str]:
         with JsonlWriter(partial, append=False) as writer:
             for row in rows.values():
                 writer.write(row)
+        # в контейнере парсер работает от root — файл из git остаётся за
+        # владельцем репозитория, иначе его нельзя будет править на хосте
+        stat = catalog_path.stat()
+        try:
+            os.chown(partial, stat.st_uid, stat.st_gid)
+        except PermissionError:
+            pass
         partial.replace(catalog_path)
     return set(rows)
 
