@@ -56,9 +56,11 @@ class ApiSettings:
     accept_min_verify_prob: float = float(_env("ACCEPT_MIN_VERIFY_PROB", "0.3"))
     accept_max_vlm_none_prob: float = float(_env("ACCEPT_MAX_VLM_NONE_PROB", "0.5"))
     accept_min_vlm_prob: float = float(_env("ACCEPT_MIN_VLM_PROB", "0.8"))
-    # Вина нет в каталоге — /v1/eval/predict отдаёт {"slug": null}, top1 в
-    # /v1/search и /v1/scan — null. 0 — всегда отдавать ближайшее вино
-    predict_empty_if_absent: bool = _env("PREDICT_EMPTY_IF_ABSENT", "1") == "1"
+    # 0 (по умолчанию): /v1/eval/predict и top1 всегда отдают вино, выбранное
+    # VLM, — по условиям проверки все фото есть в каталоге (29.09.2026).
+    # 1: вина нет в каталоге — {"slug": null} и top1: null. Веб-сканер пишет
+    # «нет в каталоге» при любом значении: экран строится по reason, не по top1
+    predict_empty_if_absent: bool = _env("PREDICT_EMPTY_IF_ABSENT", "0") == "1"
     # только без VLM
     accept_min_image_score: float = float(_env("ACCEPT_MIN_IMAGE_SCORE", "0.76"))
     accept_min_margin: float = float(_env("ACCEPT_MIN_MARGIN", "0.02"))

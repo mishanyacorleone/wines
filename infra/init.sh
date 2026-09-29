@@ -65,7 +65,10 @@ else
 fi
 
 step "5/6 Сервис (загрузка моделей и прогрев — до пары минут)"
-docker compose up -d --wait --wait-timeout 600 api
+# Всегда пересоздаём: API читает каталог сомелье и строит кэш эталонов при
+# старте — запущенный раньше (повторный init.sh после сбоя) остался бы с
+# пустым или старым каталогом
+docker compose up -d --wait --wait-timeout 600 --force-recreate --no-deps api
 port="${WINE_API_PORT:-8080}"
 
 step "6/6 Смоук-тесты"
