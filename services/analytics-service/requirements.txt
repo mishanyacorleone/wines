@@ -1,0 +1,9 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+pydantic==2.10.4
+sqlalchemy==2.0.36
+# драйвер PostgreSQL; binary — со встроенной libpq
+psycopg[binary]==3.2.3
+# проверка админа в сервисе пользователей, вина для демо-данных из сервиса распознавания
+httpx==0.27.2
+python-dotenv==1.2.3

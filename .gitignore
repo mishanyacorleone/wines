@@ -20,6 +20,8 @@ data/qdrant/
 data/Датасет (1)/Реальные фото.zip
 # отклики пользователей сканера (POST /v1/feedback) — данные конкретного стенда
 data/feedback/
+# аватары, превью сканов, значки достижений (сервис пользователей)
+data/users/
 # HTML-отчёты прогонов и превью к ним (~8 МБ на прогон, копии фото) —
 # пересобираются eval_runner; в репозитории остаются results.jsonl и accuracy.xlsx
 data/reports/**/report.html
@@ -55,3 +57,14 @@ Thumbs.db
 *.log
 nohup.out
 .ipynb_checkpoints/
+CLAUDE.md
+BACKLOG.md
+
+# локальные бэкапы версий (карта и т. п.)
+backups/
+
+# скриншоты для обсуждения правок (stand.png, orig.png, share.png …) — только в корне
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp

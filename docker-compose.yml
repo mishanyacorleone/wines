@@ -2,7 +2,15 @@
 #
 # Первый запуск — ./infra/init.sh: скачает модели, соберёт каталог с сайта,
 # построит индекс и поднимет сервис. Дальше достаточно:
-#   docker compose up -d            # Qdrant + API на :8080
+#   docker compose up -d            # всё на :8080 через шлюз
+#
+# Сервисы:
+#   gateway  — nginx, единственный порт наружу (:8080), раздаёт запросы сервисам
+#   api      — распознавание (SigLIP 2 + Qwen3-VL на GPU), веб-сканер /app/
+#   users    — аккаунт, история сканов, оценки, достижения, регионы карты (без GPU)
+#   analytics — события веб-сканера и дашборд для РСХБ (без GPU)
+#   qdrant   — векторный индекс и каталог вин
+#   postgres — данные пользователей
 #
 # Разовые шаги (профиль init, сами не стартуют):
 #   docker compose run --rm scraper            # каталог с vino-svoe.ru → data/catalog
@@ -61,13 +69,113 @@ services:
       WINE_QDRANT_URL: http://qdrant:6333
       WINE_API_HOST: 0.0.0.0
       WINE_API_PORT: "8080"
+    # Перекрывает HEALTHCHECK образа: загрузка двух моделей с медленного диска
+    # и при занятой чужими сервисами GPU не всегда укладывается в 300 с
+    # (17.10: ~4 мин) — `up --wait` успевал объявить API unhealthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 600s
+      retries: 3
+    # Наружу — через шлюз; напрямую только с localhost, для отладки
     ports:
-      - "${WINE_API_PORT:-8080}:8080"
+      - "127.0.0.1:${WINE_API_DIRECT_PORT:-8090}:8080"
     volumes:
       - ./models:/app/models:ro
       # каталог — на запись: сервис кладёт сюда кэш уменьшенных эталонов для VLM
       - ./data/catalog:/app/data/catalog
       - ./data/feedback:/app/data/feedback
+      # Веб-сканер — из репозитория поверх копии в образе: правка вёрстки видна
+      # сразу, без пересборки образа с torch (код на Python — по-прежнему из образа)
+      - ./services/search-api/src/search_api/web:/app/services/search-api/src/search_api/web:ro
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${WINE_PG_USER:-wines}
+      POSTGRES_PASSWORD: ${WINE_PG_PASSWORD:-wines}
+      POSTGRES_DB: ${WINE_PG_DB:-wines}
+    # Именованный том, а не папка data/: файлы Postgres принадлежат его
+    # пользователю в контейнере, на хосте их не удалить без sudo
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Для отладки (psql) — только localhost; 5432 на хосте часто занят своим Postgres
+    ports:
+      - "127.0.0.1:${WINE_PG_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  users:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    image: wines-users
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WINE_USERS_DB_URL: postgresql+psycopg://${WINE_PG_USER:-wines}:${WINE_PG_PASSWORD:-wines}@postgres:5432/${WINE_PG_DB:-wines}
+      WINE_QDRANT_URL: http://qdrant:6333
+      WINE_USERS_HOST: 0.0.0.0
+      WINE_USERS_PORT: "8000"
+    volumes:
+      # аватары, превью сканов, значки достижений
+      - ./data/users:/app/data/users
+
+  analytics:
+    build:
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
+    image: wines-analytics
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WINE_ANALYTICS_DB_URL: postgresql+psycopg://${WINE_PG_USER:-wines}:${WINE_PG_PASSWORD:-wines}@postgres:5432/${WINE_PG_DB:-wines}
+      # кто админ — спрашивает сервис пользователей; вина для демо-данных — сервис распознавания
+      WINE_ANALYTICS_USERS_URL: http://users:8000
+      WINE_ANALYTICS_API_URL: http://api:8080
+      WINE_ANALYTICS_HOST: 0.0.0.0
+      WINE_ANALYTICS_PORT: "8001"
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    # Шлюзу нужно, чтобы контейнеры существовали (nginx разрешает имена при
+    # старте), а не чтобы были готовы: пока API грузит модели, шлюз отвечает 502
+    depends_on:
+      api:
+        condition: service_started
+      users:
+        condition: service_started
+      analytics:
+        condition: service_started
+    ports:
+      - "${WINE_API_PORT:-8080}:8080"
+    volumes:
+      - ./infra/gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      # /health проходит через шлюз в API — запас на старт такой же, как у API
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 600s
+      retries: 3
 
   scraper:
     build:
@@ -104,3 +212,6 @@ services:
     volumes:
       - ./models:/app/models:ro
       - ./data/catalog:/app/data/catalog:ro
+
+volumes:
+  postgres-data:

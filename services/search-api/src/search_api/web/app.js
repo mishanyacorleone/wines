@@ -18,8 +18,8 @@
   const DEMO = params.get("demo");
 
   const $ = (sel, root = document) => root.querySelector(sel);
-  const screens = ["scan", "loading", "result"];
-  const state = { photoUrl: null, scan: null, current: null };
+  // backTo — куда ведёт «назад» с карточки: к результату скана или в профиль
+  const state = { photoUrl: null, scan: null, current: null, backTo: null };
 
   // ── API ──────────────────────────────────────────────────────────────────
   const api = {
@@ -122,11 +122,18 @@
     sparkling: "linear-gradient(135deg,#FBF1C9,#E8D48E)", sweet: "linear-gradient(135deg,#E9A86B,#A8542C)",
   };
 
+  // Экраны кабинета (profile, admin) живут в адресе (#profile): их можно
+  // обновить и открыть по ссылке. «Назад» на Android возвращает к сканеру
+  const HASH_SCREENS = ["profile", "admin", "map"];
   function show(name, { push = true } = {}) {
-    screens.forEach((s) => $(`#screen-${s}`).classList.toggle("screen--active", s === name));
+    document.querySelectorAll(".screen").forEach((el) => el.classList.toggle("screen--active", el.id === `screen-${name}`));
     window.scrollTo(0, 0);
-    // «Назад» на Android возвращает к сканеру, а не уводит со страницы
-    if (push && name === "result") history.pushState({ screen: name }, "");
+    if (!push) return;
+    if (HASH_SCREENS.includes(name)) {
+      if (location.hash !== `#${name}`) history.pushState({ screen: name }, "", `#${name}`);
+    } else if (name === "result") {
+      history.pushState({ screen: name }, "", location.pathname + location.search);
+    }
   }
 
   let toastTimer;
@@ -279,6 +286,7 @@
     if (!file) return;
     if (state.photoUrl) URL.revokeObjectURL(state.photoUrl);
     state.photoUrl = URL.createObjectURL(file);
+    state.backTo = null;
     $("#loading-img").src = state.photoUrl;
     show("loading", { push: false });
 
@@ -296,6 +304,8 @@
       if (res.status === "match" && res.wine) renderMatch(res);
       else renderNotFound(res);
       show("result");
+      // Кабинет (account.js) записывает скан в историю или предлагает войти
+      document.dispatchEvent(new CustomEvent("wine:scanned", { detail: { res, file } }));
     } catch (err) {
       show("scan", { push: false });
       toast(err.message || "Не удалось распознать фото. Попробуйте ещё раз");
@@ -317,6 +327,7 @@
           <button class="ui-button ui-button_elevated" type="button" data-action="not-this">Нет, другое</button>
         </div>
       </section>
+      <div id="account-slot"></div>
       ${sommelierHtml(wine)}
       ${tailHtml(wine)}`;
     $("#screen-result").dataset.alts = JSON.stringify(res.alternatives || []);
@@ -326,9 +337,12 @@
 
   function renderPicked(wine) {
     state.current = wine;
-    const back = state.scan
-      ? `<button class="back-link" type="button" data-action="back-to-alts">${icon("arrow-left")}К результату</button>`
-      : "";
+    const BACK = { profile: ["acc-profile", "К профилю"], map: ["map-open", "К винной карте"] };
+    const back = BACK[state.backTo]
+      ? `<button class="back-link" type="button" data-action="${BACK[state.backTo][0]}">${icon("arrow-left")}${BACK[state.backTo][1]}</button>`
+      : state.scan
+        ? `<button class="back-link" type="button" data-action="back-to-alts">${icon("arrow-left")}К результату</button>`
+        : "";
     $("#screen-result").innerHTML = `${back}${cardHtml(wine)}${sommelierHtml(wine)}${tailHtml(wine)}`;
     bindCard();
     updateSliders();
@@ -472,6 +486,7 @@
         </section>` : ""}
       <div class="stack">
         <a class="ui-button ui-button_primary ui-button_large" href="${esc(w.url)}" target="_blank" rel="noopener">Открыть на сайте ${icon("external")}</a>
+        ${window.WineShare ? `<button class="ui-button ui-button_elevated ui-button_large" type="button" data-action="share-wine">${icon("share")}Поделиться</button>` : ""}
         <button class="ui-button ui-button_elevated ui-button_large" type="button" data-action="camera">${icon("camera")}Сфотографировать другое вино</button>
       </div>
       ${w.similar?.length ? `
@@ -542,6 +557,7 @@
       </div>
       ${state.photoUrl ? `<img class="photo-thumb" src="${state.photoUrl}" alt="Ваше фото">` : ""}
       <p class="notfound-lead">${esc(lead)}</p>
+      <div id="account-slot"></div>
       ${alts.length ? `
         <section class="section section--wide" style="padding-top:32px" aria-labelledby="alts-title">
           <h2 class="section__title" id="alts-title">${esc(altsTitle)}</h2>
@@ -562,6 +578,7 @@
     lastFocus = document.activeElement;
     $("#sheet-title").textContent = title;
     $("#sheet-body").innerHTML = html;
+    $("#sheet").className = "sheet"; // сбросить оформление прошлой шторки (account.js добавляет своё)
     $("#sheet").hidden = false;
     document.body.style.overflow = "hidden";
     $("#sheet .sheet__close").focus();
@@ -588,13 +605,16 @@
     }
   }
 
-  async function openWine(slug, { fromAlternative = false } = {}) {
+  async function openWine(slug, { fromAlternative = false, backTo = null } = {}) {
     closeSheet();
     closeSearch();
+    state.backTo = backTo;
     const predicted = state.scan?.wine?.slug || state.scan?.alternatives?.[0]?.slug || null;
     if (fromAlternative) {
       api.feedback({ action: "picked_alternative", predicted_slug: predicted, chosen_slug: slug,
         status: state.scan?.status, reason: state.scan?.reason });
+      // пользователь сам поправил распознавание — кабинет исправит скан в истории
+      document.dispatchEvent(new CustomEvent("wine:picked", { detail: { slug } }));
     }
     try {
       renderPicked(await api.wine(slug));
@@ -614,7 +634,9 @@
       case "home":
         e.preventDefault();
         closeSheet();
+        closeMenu();
         show("scan", { push: false });
+        if (location.hash) history.pushState(null, "", location.pathname + location.search);
         break;
       case "camera":
         closeSheet();
@@ -725,7 +747,9 @@
     closeSheet();
     closeSearch();
     closeCamera();
-    show("scan", { push: false });
+    const screen = location.hash.slice(1);
+    if (HASH_SCREENS.includes(screen)) document.dispatchEvent(new CustomEvent("wine:route", { detail: { screen } }));
+    else show("scan", { push: false });
   });
 
   ["#input-camera", "#input-gallery"].forEach((sel) => {
@@ -746,6 +770,10 @@
     $("#demo-banner").hidden = false;
     document.body.classList.add("demo");
   }
+
+  // Общие функции страницы — для кабинета (account.js), он подключается следом
+  window.Wine = { DEMO, $, esc, icon, img, show, toast, openSheet, closeSheet, closeMenu, openWine, request,
+    current: () => state.current };
 
   // Демо: сразу показать экран результата, без выбора файла
   if (DEMO && params.has("autorun")) {

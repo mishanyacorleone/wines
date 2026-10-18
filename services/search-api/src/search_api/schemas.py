@@ -201,6 +201,16 @@ class DishPairingResponse(BaseModel):
     wines: list[WineSummary]
 
 
+class RegionInfo(BaseModel):
+    """Винный регион каталога — для винной карты России."""
+
+    name: str = Field(description="как в поле region карточки: «Кубань»")
+    wines: int = Field(description="вин региона в каталоге")
+    manufacturers: int = Field(description="виноделен")
+    grapes: list[str] = Field(default_factory=list, description="главные сорта, по числу вин")
+    image: str | None = Field(default=None, description="фото региона с сайта")
+
+
 class DishListItem(BaseModel):
     dish: str
     icon: str

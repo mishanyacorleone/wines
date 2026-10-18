@@ -9,6 +9,10 @@
 !services/indexer/src/
 !services/search-api/requirements.txt
 !services/search-api/src/
+!services/user-service/requirements.txt
+!services/user-service/src/
+!services/analytics-service/requirements.txt
+!services/analytics-service/src/
 
 **/__pycache__
 **/*.py[cod]

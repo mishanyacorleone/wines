@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="app.css?v=6">
+  <link rel="stylesheet" href="app.css?v=20">
 </head>
 <body>
   <!-- Шапка как .core-header на vino-svoe.ru: плавающая «таблетка».
@@ -44,6 +44,11 @@
             <button class="ui-button ui-button_transparent core-header__search" type="button" data-action="search" aria-label="Поиск">
               <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
             </button>
+            <!-- Профиль: появляется, только если поднят сервис пользователей (account.js) -->
+            <button class="ui-button ui-button_transparent core-header__profile" type="button" data-action="acc-open"
+                    id="header-profile" hidden aria-label="Профиль" title="Профиль">
+              <svg class="i" aria-hidden="true"><use href="#i-user"/></svg>
+            </button>
             <button class="ui-button ui-button_primary ui-button_round core-header__action-button" type="button"
                     data-action="menu" aria-label="Меню" aria-expanded="false" aria-controls="mobile-nav">
               <svg class="i core-header__icon-search" aria-hidden="true"><use href="#i-search"/></svg>
@@ -59,6 +64,10 @@
           <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/tours">Винные туры</a>
           <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/wineries">Винодельни и регионы</a>
           <a class="core-header__mobile-nav-link" href="https://vino-svoe.ru/surveys/vinnyj-barometr">Винный Барометр</a>
+          <button class="core-header__mobile-nav-link core-header__mobile-nav-link--account" type="button" data-action="home">Найти вино по фото</button>
+          <button class="core-header__mobile-nav-link core-header__mobile-nav-link--account" type="button" data-action="map-open">Винная карта</button>
+          <button class="core-header__mobile-nav-link core-header__mobile-nav-link--account" type="button" data-action="acc-open"
+                  id="mobile-profile" hidden>Мой профиль</button>
         </nav>
       </div>
     </div>
@@ -143,6 +152,13 @@
 
     <!-- 3. Результат: карточка или «не найдено» -->
     <section class="screen" id="screen-result" aria-live="polite"></section>
+
+    <!-- 4. Профиль и 5. Достижения (админ) — рисует account.js -->
+    <section class="screen" id="screen-profile" aria-label="Профиль"></section>
+    <section class="screen" id="screen-admin" aria-label="Управление достижениями"></section>
+
+    <!-- 6. Винная карта России — рисует map.js -->
+    <section class="screen" id="screen-map" aria-label="Винная карта России"></section>
   </main>
 
   <!-- Камера в браузере (getUserMedia). На телефоне вместо неё — системная
@@ -233,10 +249,28 @@
       <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
       <symbol id="i-switch" viewBox="0 0 24 24"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3M6 2l3 3-3 3"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.2 6.8a2.8 2.8 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8L2 21.4a.5.5 0 0 0 .6.6L7 20.7a2 2 0 0 0 .8-.5Z"/><path d="m15 5 4 4"/></symbol>
+      <symbol id="i-thumb-up" viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8a2 2 0 0 1-1.9 1.4H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9Z"/></symbol>
+      <symbol id="i-thumb-down" viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.1 10 14H4.2a2 2 0 0 1-1.9-2.6l2.3-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.8a2 2 0 0 0-1.8 1.1L12 22a3.1 3.1 0 0 1-3-3.9Z"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+      <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
       <symbol id="i-search-x" viewBox="0 0 24 24"><path d="m13.5 8.5-5 5M8.5 8.5l5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
     </defs>
   </svg>
 
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=10"></script>
+  <script src="map.js?v=9"></script>
+  <script src="vendor/qrcode.js"></script>
+  <script src="share.js?v=8"></script>
+  <script src="account.js?v=8"></script>
+  <script src="analytics.js?v=2"></script>
 </body>
 </html>

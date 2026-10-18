@@ -179,9 +179,96 @@ else
   bad "/v1/catalog/search: HTTP $code"
 fi
 
+read -r code ms < <(req "$URL/v1/regions")
+if [ "$code" = 200 ] && jq -e 'length > 0 and all(.[]; .wines > 0)' "$BODY" >/dev/null 2>&1; then
+  ok "/v1/regions: $(jq -r 'map("\(.name) \(.wines)") | join(", ")' "$BODY")"
+  region=$(jq -r '.[0].name' "$BODY")
+  read -r code ms < <(req -G --data-urlencode "limit=3" "$URL/v1/regions/$(jq -rn --arg r "$region" '$r|@uri')/wines")
+  [ "$code" = 200 ] && jq -e 'length > 0' "$BODY" >/dev/null 2>&1 \
+    && ok "/v1/regions/…/wines: что попробовать из региона «$region»" || bad "/v1/regions/…/wines: HTTP $code"
+else
+  bad "/v1/regions: HTTP $code — винная карта без каталога регионов"
+fi
+read -r code ms < <(req "$URL/app/russia-map.json")
+[ "$code" = 200 ] && jq -e '(.subjects | length) >= 85' "$BODY" >/dev/null 2>&1 \
+  && ok "/app/russia-map.json: контуры $(jq '.subjects | length' "$BODY") субъектов" || bad "/app/russia-map.json: HTTP $code"
+read -r code ms < <(req "$URL/v1/map/zones")
+if [ "$code" = 200 ] && jq -e '(.zones | length) > 0' "$BODY" >/dev/null 2>&1; then
+  ok "/v1/map/zones: $(jq '.zones | length' "$BODY") винных регионов на карте, сопоставлений админа: $(jq '.aliases | length' "$BODY")"
+else
+  skip "/v1/map/zones: HTTP $code — регионы карты ведёт сервис пользователей (запуск без шлюза?)"
+fi
+
+read -r code ms < <(req "$URL/app/share.js")
+code_share=$code
+read -r code ms < <(req "$URL/app/vendor/qrcode.js")
+[ "$code_share" = 200 ] && [ "$code" = 200 ] && ok "«Поделиться»: share.js и QR-библиотека отдаются" \
+  || bad "«Поделиться»: share.js HTTP $code_share, vendor/qrcode.js HTTP $code"
+read -r code ms < <(req "$URL/v1/settings/share")
+if [ "$code" = 200 ] && jq -e '.wine_template | length > 0' "$BODY" >/dev/null 2>&1; then
+  ok "текст «Поделиться вином»: $(jq -r '.wine_template' "$BODY" | head -c 80)"
+else
+  skip "/v1/settings/share: HTTP $code — текст по умолчанию из share.js (запуск без шлюза?)"
+fi
+
+section "Аналитика"
+read -r code ms < <(req -H 'Content-Type: application/json' \
+  -d '{"type":"page_view","anon_id":"smoke-test-0001","props":{"source":"smoke"}}' "$URL/v1/events")
+case "$code" in
+  204) ok "/v1/events: событие принято" ;;
+  404|502) skip "/v1/events: HTTP $code — сервис аналитики не подключён (запуск без шлюза?)" ;;
+  *) bad "/v1/events: HTTP $code $(head -c 200 "$BODY")" ;;
+esac
+read -r code ms < <(req "$URL/v1/admin/analytics")
+case "$code" in
+  401|403) ok "/v1/admin/analytics без входа администратора → HTTP $code" ;;
+  404|502) skip "/v1/admin/analytics: HTTP $code — сервис аналитики не подключён" ;;
+  *) bad "/v1/admin/analytics без входа → HTTP $code (ожидался 401/403)" ;;
+esac
+
 read -r code ms < <(req "$URL/app/")
 if [ "$code" = 200 ] && grep -qi '<html' "$BODY"; then ok "/app/: страница сканера отдаётся"
 else bad "/app/: HTTP $code"; fi
+
+section "Аккаунт (сервис пользователей)"
+JAR="$TMP/cookies"
+read -r code ms < <(req "$URL/v1/avatars")
+if [ "$code" != 200 ]; then
+  # Без шлюза (API запущен напрямую, без Docker) аккаунта нет — сканер работает и так
+  skip "/v1/avatars: HTTP $code — сервис пользователей не подключён (запуск без шлюза?)"
+else
+  ok "/v1/avatars: $(jq length "$BODY") готовых аватаров"
+  login="smoke-$(date +%s)-$$@example.com"
+  read -r code ms < <(req -c "$JAR" -H 'Content-Type: application/json' \
+    -d "{\"login\":\"$login\",\"password\":\"smoke-pass-123\",\"name\":\"Смоук\"}" "$URL/v1/auth/register")
+  if [ "$code" = 201 ] && jq -e '.user.role == "user" and (.achievements | length) > 0' "$BODY" >/dev/null 2>&1; then
+    ok "регистрация: $(jq -r '"\(.user.login), достижений в каталоге: \(.achievements | length)"' "$BODY")"
+    if [ -n "${scan_slug:-}" ] && [ -n "${sample:-}" ]; then
+      read -r code ms < <(req -b "$JAR" -F status=match -F "slug=$scan_slug" -F "photo=@data/catalog/$sample" "$URL/v1/me/scans")
+      if [ "$code" = 201 ] && jq -e '.scan.wine.slug != null and .scan.photo_url != null' "$BODY" >/dev/null 2>&1; then
+        ok "скан в истории: $(jq -r '"\(.scan.wine.title) (\(.scan.wine.region // "регион ?")), новых достижений: \(.new_achievements | length)"' "$BODY")"
+      else
+        bad "запись скана: HTTP $code $(head -c 200 "$BODY")"
+      fi
+      read -r code ms < <(req -b "$JAR" -X PUT -H 'Content-Type: application/json' -d '{"value":1}' "$URL/v1/me/ratings/$scan_slug")
+      [ "$code" = 200 ] && ok "лайк вина из истории" || bad "лайк: HTTP $code $(head -c 200 "$BODY")"
+      read -r code ms < <(req -b "$JAR" "$URL/v1/me/regions")
+      if [ "$code" = 200 ] && jq -e '(.regions | length) == 1' "$BODY" >/dev/null 2>&1; then
+        ok "винная карта: открыт регион $(jq -r '.regions[0].name' "$BODY")"
+      else
+        bad "/v1/me/regions: HTTP $code $(head -c 200 "$BODY")"
+      fi
+    fi
+    read -r code ms < <(req -b "$JAR" "$URL/v1/me")
+    [ "$code" = 200 ] && ok "профиль: $(jq -r '"сканов \(.stats.scans), регионов \(.stats.regions), оценок \(.stats.ratings)"' "$BODY")" \
+                      || bad "/v1/me: HTTP $code"
+    # Тестовый аккаунт удаляем: смоук не должен оставлять следов в данных пользователей
+    read -r code ms < <(req -b "$JAR" -X DELETE "$URL/v1/me")
+    [ "$code" = 204 ] && ok "тестовый аккаунт удалён" || bad "удаление аккаунта: HTTP $code"
+  else
+    bad "регистрация: HTTP $code $(head -c 200 "$BODY") (docker compose logs users)"
+  fi
+fi
 
 if [ -s "$TMP/latencies" ]; then
   section "Скорость /v1/eval/predict"

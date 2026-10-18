@@ -51,8 +51,8 @@ class SiteMedia:
         # размеры — вдвое больше, чем на сайте: 72 px блюда, 44 px миниатюры, для retina
         return self.image_url(self.dishes.get(name), 144)
 
-    def region(self, name: str | None) -> str | None:
-        return self.image_url(self.regions.get(name or ""), 88)
+    def region(self, name: str | None, size: int = 88) -> str | None:
+        return self.image_url(self.regions.get(name or ""), size)
 
     def grape(self, name: str | None) -> str | None:
         return self.image_url((self.grapes.get(name or "") or {}).get("image"), 88)
@@ -384,6 +384,48 @@ class Sommelier:
             scored.append((in_title, title.startswith(words[0]), wine.get("public_rating") or 0, wine))
         scored.sort(key=lambda x: (-x[0], -x[1], -x[2]))
         return [w for *_, w in scored[:limit]]
+
+    def region_summary(self) -> list[dict[str, Any]]:
+        """Винные регионы каталога — для винной карты: сколько вин, виноделен, главные сорта."""
+        regions: dict[str, dict[str, Any]] = {}
+        for wine in self._wines.values():
+            name = wine.get("region")
+            if not name:
+                continue
+            info = regions.setdefault(name, {"name": name, "wines": 0, "makers": set(), "grapes": {}})
+            info["wines"] += 1
+            if wine.get("manufacturer"):
+                info["makers"].add(wine["manufacturer"])
+            for grape in wine.get("grapes") or []:
+                info["grapes"][grape] = info["grapes"].get(grape, 0) + 1
+        return [
+            {
+                "name": r["name"],
+                "wines": r["wines"],
+                "manufacturers": len(r["makers"]),
+                "grapes": [g for g, _ in sorted(r["grapes"].items(), key=lambda x: -x[1])[:4]],
+                "image": self.media.region(r["name"], 640),
+            }
+            for r in sorted(regions.values(), key=lambda r: -r["wines"])
+        ]
+
+    def for_region(self, region: str, limit: int = 8) -> list[dict[str, Any]]:
+        """Вина региона: сначала с высоким народным рейтингом, не больше двух от винодельни."""
+        target = _norm(region)
+        wines = sorted(
+            (w for w in self._wines.values() if _norm(w.get("region")) == target),
+            key=lambda w: (-(w.get("public_rating") or 0), _norm(w.get("title"))),
+        )
+        picked, per_maker = [], {}
+        for wine in wines:
+            maker = _norm(wine.get("manufacturer"))
+            if per_maker.get(maker, 0) >= 2:
+                continue
+            per_maker[maker] = per_maker.get(maker, 0) + 1
+            picked.append(wine)
+            if len(picked) == limit:
+                break
+        return picked
 
     def dish_names(self) -> list[tuple[str, int]]:
         """Все блюда каталога с числом вин — для экрана «подобрать к блюду»."""

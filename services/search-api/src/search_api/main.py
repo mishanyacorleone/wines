@@ -28,6 +28,7 @@ from .schemas import (
     FeedbackResponse,
     HealthResponse,
     PredictResponse,
+    RegionInfo,
     ScanResponse,
     SearchResponse,
     Timings,
@@ -346,6 +347,18 @@ def pairing(
     """Вина к блюду: сначала те, у кого это блюдо в карточке, затем то же семейство."""
     wines = _sommelier().for_dish(dish, style=style, exclude=exclude, limit=limit)
     return DishPairingResponse(dish=dish, wines=[_wine_summary(w) for w in wines])
+
+
+@app.get("/v1/regions", response_model=list[RegionInfo])
+def regions() -> list[RegionInfo]:
+    """Винные регионы каталога для винной карты: число вин, виноделен, главные сорта, фото."""
+    return [RegionInfo(**r) for r in _sommelier().region_summary()]
+
+
+@app.get("/v1/regions/{region}/wines", response_model=list[WineSummary])
+def region_wines(region: str, limit: int = Query(default=8, ge=1, le=30)) -> list[WineSummary]:
+    """Что попробовать из региона: по народному рейтингу, не больше двух вин от винодельни."""
+    return [_wine_summary(w) for w in _sommelier().for_region(region, limit=limit)]
 
 
 @app.post("/v1/feedback", response_model=FeedbackResponse)

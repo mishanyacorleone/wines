@@ -32,7 +32,7 @@ if ! docker info 2>/dev/null | grep -qi 'runtimes:.*nvidia'; then
 fi
 
 # Папки данных создаём от имени пользователя, иначе Docker создаст их от root
-mkdir -p data/catalog data/qdrant/storage data/qdrant/snapshots data/feedback
+mkdir -p data/catalog data/qdrant/storage data/qdrant/snapshots data/feedback data/users
 # .env необязателен (compose читает его, если он есть) — заводим из шаблона для тонкой настройки
 [ -f .env ] || cp .env.example .env
 
@@ -69,15 +69,19 @@ step "5/6 Сервис (загрузка моделей и прогрев — д
 # старте — запущенный раньше (повторный init.sh после сбоя) остался бы с
 # пустым или старым каталогом
 docker compose up -d --wait --wait-timeout 600 --force-recreate --no-deps api
+# Аккаунты (Postgres + сервис пользователей) и шлюз на :8080
+docker compose up -d --wait --wait-timeout 300 postgres users analytics gateway
 port="${WINE_API_PORT:-8080}"
 
 step "6/6 Смоук-тесты"
-./infra/smoke.sh --url "http://127.0.0.1:$port" || fail "смоук-тесты не прошли — см. выше и docker compose logs api"
+./infra/smoke.sh --url "http://127.0.0.1:$port" || fail "смоук-тесты не прошли — см. выше и docker compose logs api users gateway"
 cat <<EOF
 
 Готово.
   Сканер:            http://localhost:$port/app/   (с телефона — http://<IP машины>:$port/app/)
   Контракт оценки:   POST http://localhost:$port/v1/eval/predict  (поле image)
   Документация API:  http://localhost:$port/docs
+  Админ достижений:  WINE_ADMIN_LOGIN / WINE_ADMIN_PASSWORD из .env; пароль не задан —
+                     сгенерирован и напечатан в  docker compose logs users | grep -i пароль
 Остановить: docker compose down    Запустить снова: docker compose up -d
 EOF

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Первый бокал">
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F6E3A6"/><stop offset=".55" stop-color="#D9B663"/><stop offset="1" stop-color="#B38A3C"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A84A50"/><stop offset="1" stop-color="#5E1F25"/>
+    </linearGradient>
+    <radialGradient id="shine" cx=".35" cy=".25" r=".7">
+      <stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path d="M96 176 74 240l24-11 13 21 17-58Z" fill="#5E1F25"/>
+  <path d="M160 176l22 64-24-11-13 21-17-58Z" fill="#5E1F25"/>
+  <path d="M96 176 74 240l24-11 13 21 17-58Z" fill="#000" opacity=".15"/>
+  <circle cx="128" cy="116" r="100" fill="url(#ring)"/>
+  <circle cx="128" cy="116" r="100" fill="none" stroke="#8C6A2A" stroke-opacity=".35" stroke-width="2"/>
+  <circle cx="128" cy="116" r="84" fill="url(#core)"/>
+  <circle cx="128" cy="116" r="74" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="2" stroke-dasharray="1 7" stroke-linecap="round"/>
+  <g fill="none" stroke="#FDF9ED" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 66h56l-5 42a23 23 0 0 1-46 0Z"/>
+    <path d="M104 92h48" stroke-width="6" opacity=".7"/>
+    <path d="M128 131v29M108 162h40"/>
+  </g>
+  <circle cx="128" cy="116" r="84" fill="url(#shine)"/>
+</svg>
