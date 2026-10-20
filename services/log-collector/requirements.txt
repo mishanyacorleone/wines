@@ -1,0 +1,2 @@
+# клиент Docker Engine API: логи и события контейнеров через /var/run/docker.sock
+docker==7.1.0

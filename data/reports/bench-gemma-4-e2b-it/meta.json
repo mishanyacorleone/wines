@@ -1,0 +1,13 @@
+{
+  "model": "gemma-4-E2B-it",
+  "backend": "chat",
+  "photos": 100,
+  "load_s": 173.9,
+  "weights_gb": 9.52,
+  "peak_vram_gb": 10.0,
+  "median_ms": 1272,
+  "p95_ms": 1927,
+  "max_ms": 2434,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

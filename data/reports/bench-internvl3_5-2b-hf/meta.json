@@ -1,0 +1,13 @@
+{
+  "model": "InternVL3_5-2B-HF",
+  "backend": "chat",
+  "photos": 100,
+  "load_s": 57.8,
+  "weights_gb": 4.38,
+  "peak_vram_gb": 7.26,
+  "median_ms": 2407,
+  "p95_ms": 3111,
+  "max_ms": 3623,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

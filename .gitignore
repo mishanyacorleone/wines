@@ -2,7 +2,7 @@
 .venv/
 venv/
 
-# Веса моделей (SigLIP 4,3 ГБ, Qwen3-VL 8,9 ГБ) —
+# Веса моделей (SigLIP 4,3 ГБ, Qwen3-VL-4B-FP8 5,7 ГБ) —
 # качаются скриптами infra/fetch-model.sh, fetch-vlm.sh
 models/
 
@@ -15,11 +15,17 @@ data/catalog/wines-sitemap.xml
 data/catalog/failures.jsonl
 # уменьшенные эталоны для VLM — строятся сервисом при старте
 data/catalog/vlm-refs-*/
+# расписание и история синхронизации каталога с сайтом (сервис catalog)
+data/catalog/sync-state.json
 data/real-photos/
 data/qdrant/
 data/Датасет (1)/Реальные фото.zip
 # отклики пользователей сканера (POST /v1/feedback) — данные конкретного стенда
 data/feedback/
+# аватары, превью сканов, значки достижений (сервис пользователей)
+data/users/
+# кэш компиляции vLLM (compose-сервис vllm)
+data/vllm-cache/
 # HTML-отчёты прогонов и превью к ним (~8 МБ на прогон, копии фото) —
 # пересобираются eval_runner; в репозитории остаются results.jsonl и accuracy.xlsx
 data/reports/**/report.html
@@ -29,7 +35,8 @@ eval/
 
 # Самописная разметка — не используется, заменена Label Studio
 tools/labeler/
-# логи сервиса, запущенного в фоне
+# логи: logs/<дата>/all.log и services/ (сборщик логов), старые логи нативного запуска
+logs/
 data/logs/
 
 # Бинарник Qdrant (86 МБ) — качается с GitHub-релиза, см. README
@@ -55,3 +62,14 @@ Thumbs.db
 *.log
 nohup.out
 .ipynb_checkpoints/
+CLAUDE.md
+BACKLOG.md
+
+# локальные бэкапы версий (карта и т. п.)
+backups/
+
+# скриншоты для обсуждения правок (stand.png, orig.png, share.png …) — только в корне
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Смоук-тесты поднятого сервиса: контракт организатора, сканер, веб, скорость.
+# Смоук-тесты поднятого стека: контракт организатора, сканер, веб, аккаунт,
+# синхронизация каталога, логи, скорость.
 #
 #   ./infra/smoke.sh                           # сервис на http://127.0.0.1:8080
 #   ./infra/smoke.sh --queries ./eval/queries  # + каждое фото папки через /v1/eval/predict
 #   ./infra/smoke.sh --url http://host:8080 --samples 5
+#   ./infra/smoke.sh --wait 0                  # не ждать загрузки моделей
 #
 # Главная проверка — фото из каталога (data/catalog, его собирает парсер) должно
 # вернуть свой же slug. Нужно: bash, curl, jq. Код выхода 0 — всё прошло.
@@ -15,6 +17,7 @@ QDRANT="http://127.0.0.1:6333"
 SAMPLES=3
 QUERIES=""
 SLA_MS=3000
+WAIT_S=900  # embedder и vLLM грузят модели минуты — сразу после `up -d` они ещё «запускаются»
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -22,7 +25,8 @@ while [ "$#" -gt 0 ]; do
     --qdrant) QDRANT="${2%/}"; shift 2 ;;
     --samples) SAMPLES="$2"; shift 2 ;;
     --queries) QUERIES="$2"; shift 2 ;;
-    -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --wait) WAIT_S="$2"; shift 2 ;;
+    -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Неизвестный аргумент: $1 (см. --help)" >&2; exit 2 ;;
   esac
 done
@@ -65,13 +69,35 @@ predict_ok() {  # $1 — файл, $2 — подпись; печатает slug 
   return 0
 }
 
-section "Сервис $URL"
+# Ждём, пока api увидит все зависимости: иначе первые проверки упадут
+# только потому, что модели ещё в видеопамять не легли
+waited=0
+while [ "$waited" -lt "$WAIT_S" ]; do
+  read -r code ms < <(req "$URL/health")
+  if [ "$code" = 200 ] && jq -e '.components' "$BODY" >/dev/null 2>&1; then
+    down=$(jq -r '[.components | to_entries[] | select(.value.ok | not) | .key] | join(", ")' "$BODY")
+    [ -z "$down" ] && break
+    printf '\r  ...   жду: %s (%d с из %d)   ' "$down" "$waited" "$WAIT_S"
+  else
+    printf '\r  ...   жду api (%d с из %d)   ' "$waited" "$WAIT_S"
+  fi
+  sleep 10; waited=$((waited + 10))
+done
+[ "$waited" -gt 0 ] && printf '\n'
+
+section "Сервисы $URL"
+read -r code ms < <(req "$URL/gateway-health")
+[ "$code" = 200 ] && ok "шлюз отвечает" || skip "/gateway-health: HTTP $code — запуск без шлюза?"
 read -r code ms < <(req "$URL/health")
-if [ "$code" = 200 ] && jq -e '.status == "ok"' "$BODY" >/dev/null 2>&1; then
-  ok "/health: $(jq -r '"\(.indexed_points) вин в индексе, \(.device), VLM \(if .vlm_enabled then "вкл." else "выкл." end)"' "$BODY")"
-  points=$(jq -r '.indexed_points' "$BODY")
+if [ "$code" = 200 ] && jq -e '.components' "$BODY" >/dev/null 2>&1; then
+  # api жив; каждая зависимость — отдельной строкой: что именно не так, видно сразу
+  while IFS=$'\t' read -r name okv detail; do
+    [ "$okv" = true ] && ok "$name: $detail" || bad "$name: $detail (logs/$(date +%F)/all.log)"
+  done < <(jq -r '.components | to_entries[] | [.key, (.value.ok | tostring), .value.detail] | @tsv' "$BODY")
+  points=$(jq -r '.components.qdrant.detail' "$BODY" | grep -o '^[0-9]*')
+  points=${points:-0}
 else
-  bad "/health: HTTP $code — сервис не поднят (docker compose ps, docker compose logs api)"
+  bad "/health: HTTP $code — api не поднят (docker compose ps, logs/$(date +%F)/services/api.log)"
   printf '\nДальше проверять нечего.\n'; exit 1
 fi
 
@@ -179,9 +205,178 @@ else
   bad "/v1/catalog/search: HTTP $code"
 fi
 
+read -r code ms < <(req "$URL/v1/regions")
+if [ "$code" = 200 ] && jq -e 'length > 0 and all(.[]; .wines > 0)' "$BODY" >/dev/null 2>&1; then
+  ok "/v1/regions: $(jq -r 'map("\(.name) \(.wines)") | join(", ")' "$BODY")"
+  region=$(jq -r '.[0].name' "$BODY")
+  read -r code ms < <(req -G --data-urlencode "limit=3" "$URL/v1/regions/$(jq -rn --arg r "$region" '$r|@uri')/wines")
+  [ "$code" = 200 ] && jq -e 'length > 0' "$BODY" >/dev/null 2>&1 \
+    && ok "/v1/regions/…/wines: что попробовать из региона «$region»" || bad "/v1/regions/…/wines: HTTP $code"
+else
+  bad "/v1/regions: HTTP $code — винная карта без каталога регионов"
+fi
+read -r code ms < <(req "$URL/app/russia-map.json")
+[ "$code" = 200 ] && jq -e '(.subjects | length) >= 85' "$BODY" >/dev/null 2>&1 \
+  && ok "/app/russia-map.json: контуры $(jq '.subjects | length' "$BODY") субъектов" || bad "/app/russia-map.json: HTTP $code"
+read -r code ms < <(req "$URL/v1/map/zones")
+if [ "$code" = 200 ] && jq -e '(.zones | length) > 0' "$BODY" >/dev/null 2>&1; then
+  ok "/v1/map/zones: $(jq '.zones | length' "$BODY") винных регионов на карте, сопоставлений админа: $(jq '.aliases | length' "$BODY")"
+else
+  skip "/v1/map/zones: HTTP $code — регионы карты ведёт сервис пользователей (запуск без шлюза?)"
+fi
+
+read -r code ms < <(req "$URL/app/share.js")
+code_share=$code
+read -r code ms < <(req "$URL/app/vendor/qrcode.js")
+[ "$code_share" = 200 ] && [ "$code" = 200 ] && ok "«Поделиться»: share.js и QR-библиотека (грузится по требованию) отдаются" \
+  || bad "«Поделиться»: share.js HTTP $code_share, vendor/qrcode.js HTTP $code"
+read -r code ms < <(req "$URL/v1/settings/share")
+if [ "$code" = 200 ] && jq -e '.wine_template | length > 0' "$BODY" >/dev/null 2>&1; then
+  ok "текст «Поделиться вином»: $(jq -r '.wine_template' "$BODY" | head -c 80)"
+else
+  skip "/v1/settings/share: HTTP $code — текст по умолчанию из share.js (запуск без шлюза?)"
+fi
+
+section "Аналитика"
+read -r code ms < <(req -H 'Content-Type: application/json' \
+  -d '{"type":"page_view","anon_id":"smoke-test-0001","props":{"source":"smoke"}}' "$URL/v1/events")
+case "$code" in
+  204) ok "/v1/events: событие принято" ;;
+  404|502) skip "/v1/events: HTTP $code — сервис аналитики не подключён (запуск без шлюза?)" ;;
+  *) bad "/v1/events: HTTP $code $(head -c 200 "$BODY")" ;;
+esac
+read -r code ms < <(req "$URL/v1/admin/analytics")
+case "$code" in
+  401|403) ok "/v1/admin/analytics без входа администратора → HTTP $code" ;;
+  404|502) skip "/v1/admin/analytics: HTTP $code — сервис аналитики не подключён" ;;
+  *) bad "/v1/admin/analytics без входа → HTTP $code (ожидался 401/403)" ;;
+esac
+
 read -r code ms < <(req "$URL/app/")
 if [ "$code" = 200 ] && grep -qi '<html' "$BODY"; then ok "/app/: страница сканера отдаётся"
 else bad "/app/: HTTP $code"; fi
+
+# Скорость страницы: файлы с версией кэшируются на год — версия обязана совпадать с содержимым
+if python3 tools/web-assets/stamp.py --check >"$TMP/stamp" 2>&1; then
+  ok "/app/: версии файлов (?v=) совпадают с содержимым"
+else
+  bad "/app/: версии устарели, браузеры возьмут старые файлы — python tools/web-assets/stamp.py ($(head -1 "$TMP/stamp"))"
+fi
+app_js=$(grep -oE 'app\.js\?v=[a-z0-9]+' services/web/app/index.html | head -1)
+read -r code ms < <(req -D "$TMP/headers" "$URL/app/$app_js")
+[ "$code" = 200 ] && grep -qi '^cache-control:.*immutable' "$TMP/headers" \
+  && ok "/app/$app_js: кэш на год (immutable)" || bad "/app/$app_js: HTTP $code, нет Cache-Control immutable"
+if [ -n "$sample" ]; then
+  thumb="h600/$(basename "$sample" .png).webp"
+  read -r code ms < <(req "$URL/catalog-images/$thumb")
+  [ "$code" = 200 ] && ok "превью бутылки /catalog-images/$thumb: $(stat -c %s "$BODY") байт" \
+    || bad "превью бутылки /catalog-images/$thumb: HTTP $code — превью строит парсер каталога (docker compose run --rm scraper)"
+fi
+
+section "Каталог (синхронизация с сайтом)"
+read -r code ms < <(req "$URL/v1/admin/catalog/sync")
+case "$code" in
+  401|403) ok "/v1/admin/catalog/sync без входа администратора → HTTP $code" ;;
+  404|502|503) skip "/v1/admin/catalog/sync: HTTP $code — сервис каталога не подключён" ;;
+  *) bad "/v1/admin/catalog/sync без входа → HTTP $code (ожидался 401/403)" ;;
+esac
+read -r code ms < <(req "$URL/internal/catalog/reload")
+[ "$code" = 404 ] && ok "служебные /internal/ снаружи закрыты" || bad "/internal/ через шлюз → HTTP $code (ожидался 404)"
+
+section "Аккаунт (сервис пользователей)"
+JAR="$TMP/cookies"
+read -r code ms < <(req "$URL/v1/avatars")
+if [ "$code" != 200 ]; then
+  # Без шлюза (API запущен напрямую, без Docker) аккаунта нет — сканер работает и так
+  skip "/v1/avatars: HTTP $code — сервис пользователей не подключён (запуск без шлюза?)"
+else
+  ok "/v1/avatars: $(jq length "$BODY") готовых аватаров"
+  login="smoke-$(date +%s)-$$@example.com"
+  read -r code ms < <(req -c "$JAR" -H 'Content-Type: application/json' \
+    -d "{\"login\":\"$login\",\"password\":\"smoke-pass-123\",\"name\":\"Смоук\"}" "$URL/v1/auth/register")
+  if [ "$code" = 201 ] && jq -e '.user.role == "user" and (.achievements | length) > 0' "$BODY" >/dev/null 2>&1; then
+    ok "регистрация: $(jq -r '"\(.user.login), достижений в каталоге: \(.achievements | length)"' "$BODY")"
+    if [ -n "${scan_slug:-}" ] && [ -n "${sample:-}" ]; then
+      read -r code ms < <(req -b "$JAR" -F status=match -F "slug=$scan_slug" -F "photo=@data/catalog/$sample" "$URL/v1/me/scans")
+      if [ "$code" = 201 ] && jq -e '.scan.wine.slug != null and .scan.photo_url != null' "$BODY" >/dev/null 2>&1; then
+        ok "скан в истории: $(jq -r '"\(.scan.wine.title) (\(.scan.wine.region // "регион ?")), новых достижений: \(.new_achievements | length)"' "$BODY")"
+      else
+        bad "запись скана: HTTP $code $(head -c 200 "$BODY")"
+      fi
+      read -r code ms < <(req -b "$JAR" -X PUT -H 'Content-Type: application/json' -d '{"value":1}' "$URL/v1/me/ratings/$scan_slug")
+      [ "$code" = 200 ] && ok "лайк вина из истории" || bad "лайк: HTTP $code $(head -c 200 "$BODY")"
+      read -r code ms < <(req -b "$JAR" "$URL/v1/me/regions")
+      if [ "$code" = 200 ] && jq -e '(.regions | length) == 1' "$BODY" >/dev/null 2>&1; then
+        ok "винная карта: открыт регион $(jq -r '.regions[0].name' "$BODY")"
+      else
+        bad "/v1/me/regions: HTTP $code $(head -c 200 "$BODY")"
+      fi
+    fi
+    # Вовлечение: вопрос дня, дневник, челленджи, открытки (ответ и запись удалятся вместе с аккаунтом)
+    read -r code ms < <(req -b "$JAR" "$URL/v1/quiz/today")
+    if [ "$code" = 200 ] && jq -e '(.options | length) >= 2' "$BODY" >/dev/null 2>&1; then
+      ok "вопрос дня: $(jq -r '.text' "$BODY")"
+      read -r code ms < <(req -b "$JAR" -H 'Content-Type: application/json' -d '{"choice":0}' "$URL/v1/quiz/today/answer")
+      [ "$code" = 200 ] && jq -e '.saved and .streak >= 1' "$BODY" >/dev/null 2>&1 \
+        && ok "ответ на вопрос дня: серия $(jq -r '.streak' "$BODY")" || bad "ответ на вопрос дня: HTTP $code $(head -c 200 "$BODY")"
+    else
+      bad "/v1/quiz/today: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    if [ -n "${scan_slug:-}" ]; then
+      read -r code ms < <(req -b "$JAR" -H 'Content-Type: application/json' \
+        -d "{\"slug\":\"$scan_slug\",\"rating\":5,\"tags\":[\"Ягоды\"]}" "$URL/v1/me/diary")
+      [ "$code" = 201 ] && ok "дневник дегустации: запись «$(jq -r '.entry.wine.title' "$BODY")»" \
+                        || bad "дневник: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    # «Мой вкус» (A9): варианты — api, профиль и «понравится ли» — users
+    read -r code ms < <(req "$URL/v1/taste/options")
+    [ "$code" = 200 ] && jq -e '(.grapes | length) > 0' "$BODY" >/dev/null 2>&1 \
+      && ok "«Мой вкус»: сортов на выбор $(jq '.grapes | length' "$BODY")" || bad "/v1/taste/options: HTTP $code"
+    read -r code ms < <(req -b "$JAR" -X PUT -H 'Content-Type: application/json' \
+      -d '{"colors":["red"],"sugars":["dry"]}' "$URL/v1/me/taste")
+    [ "$code" = 200 ] && jq -e '.ready' "$BODY" >/dev/null 2>&1 && ok "«Мой вкус»: профиль сохранён" \
+      || bad "/v1/me/taste: HTTP $code $(head -c 200 "$BODY")"
+    if [ -n "${scan_slug:-}" ]; then
+      read -r code ms < <(req -b "$JAR" "$URL/v1/me/taste/match?slug=$scan_slug")
+      [ "$code" = 200 ] && ok "«понравится ли»: $(jq -r '.state' "$BODY")" \
+        || bad "/v1/me/taste/match: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    # «От бутылки — на винодельню» (A11): винодельни и туры — api, «Хочу съездить» — users
+    read -r code ms < <(req "$URL/v1/wineries")
+    if [ "$code" = 200 ] && jq -e 'length > 0' "$BODY" >/dev/null 2>&1; then
+      winery=$(jq -r '[.[] | select(.tours > 0)][0].slug // .[0].slug' "$BODY")
+      ok "винодельни на карте: $(jq length "$BODY"), с турами $(jq '[.[] | select(.tours > 0)] | length' "$BODY")"
+      read -r code ms < <(req "$URL/v1/wineries/$winery")
+      [ "$code" = 200 ] && ok "винодельня «$(jq -r '.name' "$BODY")»: туров $(jq '.tours | length' "$BODY"), вин $(jq '.wines_total' "$BODY")" \
+        || bad "/v1/wineries/$winery: HTTP $code"
+      read -r code ms < <(req -b "$JAR" -X PUT -H 'Content-Type: application/json' \
+        -d '{"name":"Смоук"}' "$URL/v1/me/trips/$winery")
+      [ "$code" = 200 ] && ok "«Хочу съездить»: сохранено" || bad "/v1/me/trips: HTTP $code $(head -c 200 "$BODY")"
+    else
+      bad "/v1/wineries: HTTP $code — нет справочника виноделен (search_api/wineries.json)"
+    fi
+    read -r code ms < <(req -b "$JAR" "$URL/v1/challenges")
+    [ "$code" = 200 ] && ok "челленджи: идёт $(jq length "$BODY")" || bad "/v1/challenges: HTTP $code"
+    read -r code ms < <(req "$URL/v1/gifts/smoke-nope")
+    [ "$code" = 404 ] && ok "открытки: неизвестная ссылка → 404" || bad "/v1/gifts: HTTP $code (маршрут шлюза?)"
+    read -r code ms < <(req -b "$JAR" "$URL/v1/me")
+    [ "$code" = 200 ] && ok "профиль: $(jq -r '"сканов \(.stats.scans), регионов \(.stats.regions), оценок \(.stats.ratings)"' "$BODY")" \
+                      || bad "/v1/me: HTTP $code"
+    # Тестовый аккаунт удаляем: смоук не должен оставлять следов в данных пользователей
+    read -r code ms < <(req -b "$JAR" -X DELETE "$URL/v1/me")
+    [ "$code" = 204 ] && ok "тестовый аккаунт удалён" || bad "удаление аккаунта: HTTP $code"
+  else
+    bad "регистрация: HTTP $code $(head -c 200 "$BODY") (docker compose logs users)"
+  fi
+fi
+
+section "Логи"
+today="logs/$(date +%F)"
+if [ -f "$today/all.log" ]; then
+  ok "$today: all.log ($(wc -l < "$today/all.log") строк) и по сервисам: $(ls "$today/services" 2>/dev/null | sed 's/\.log$//' | tr '\n' ' ')"
+else
+  skip "нет $today/all.log — сборщик логов не запущен (docker compose up -d logs) или стек на другой машине"
+fi
 
 if [ -s "$TMP/latencies" ]; then
   section "Скорость /v1/eval/predict"

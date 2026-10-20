@@ -1,0 +1,13 @@
+{
+  "model": "MiniCPM-V-4",
+  "backend": "minicpm",
+  "photos": 100,
+  "load_s": 118.1,
+  "weights_gb": 7.62,
+  "peak_vram_gb": 9.49,
+  "median_ms": 1652,
+  "p95_ms": 2134,
+  "max_ms": 2960,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

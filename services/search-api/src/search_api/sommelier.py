@@ -25,34 +25,45 @@ class SiteMedia:
     """Картинки справочников сайта (tools/site-media/fetch_site_media.py).
 
     Хранятся путями `/uploads/...`; готовый URL нужного размера собирает
-    `image_url` — сайт отдаёт картинки через ресайз-API, как и фото бутылок.
+    `image_url`: локальная копия из `local_dir` (data/site-media, её раздаёт
+    сервис web как /site-media/), а если копии нет — ресайз-API сайта, как у
+    фото бутылок. Копии качает tools/site-media/download_site_media.py.
     """
 
     dishes: dict[str, str] = field(default_factory=dict)
     regions: dict[str, str] = field(default_factory=dict)
     grapes: dict[str, dict[str, str | None]] = field(default_factory=dict)
     image_api: str = "https://api.vino-svoe.ru/v1/img/str-api"
+    local_dir: Path | None = None
+
+    LOCAL_SIZES = (240, 800)  # размеры локальных копий, см. download_site_media.py
 
     @classmethod
-    def load(cls, path: Path = SITE_MEDIA_PATH, image_api: str | None = None) -> "SiteMedia":
-        if not path.exists():
-            return cls()
-        data = json.loads(path.read_text(encoding="utf-8"))
+    def load(cls, path: Path = SITE_MEDIA_PATH, image_api: str | None = None,
+             local_dir: Path | None = None) -> "SiteMedia":
         kwargs = {"image_api": image_api} if image_api else {}
-        return cls(data.get("dishes", {}), data.get("regions", {}), data.get("grapes", {}), **kwargs)
+        if not path.exists():
+            return cls(local_dir=local_dir, **kwargs)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return cls(data.get("dishes", {}), data.get("regions", {}), data.get("grapes", {}),
+                   local_dir=local_dir, **kwargs)
 
     def image_url(self, path: str | None, size: int) -> str | None:
         if not path:
             return None
         filename = path.lstrip("/").removeprefix("uploads/")
+        if self.local_dir is not None:
+            local = next((s for s in self.LOCAL_SIZES if s >= size), self.LOCAL_SIZES[-1])
+            if (self.local_dir / str(local) / filename).is_file():
+                return f"/site-media/{local}/{filename}"
         return f"{self.image_api.rstrip('/')}/{size}/{size}/resize/uploads/{filename}"
 
     def dish(self, name: str) -> str | None:
         # размеры — вдвое больше, чем на сайте: 72 px блюда, 44 px миниатюры, для retina
         return self.image_url(self.dishes.get(name), 144)
 
-    def region(self, name: str | None) -> str | None:
-        return self.image_url(self.regions.get(name or ""), 88)
+    def region(self, name: str | None, size: int = 88) -> str | None:
+        return self.image_url(self.regions.get(name or ""), size)
 
     def grape(self, name: str | None) -> str | None:
         return self.image_url((self.grapes.get(name or "") or {}).get("image"), 88)
@@ -384,6 +395,78 @@ class Sommelier:
             scored.append((in_title, title.startswith(words[0]), wine.get("public_rating") or 0, wine))
         scored.sort(key=lambda x: (-x[0], -x[1], -x[2]))
         return [w for *_, w in scored[:limit]]
+
+    def region_summary(self) -> list[dict[str, Any]]:
+        """Винные регионы каталога — для винной карты: сколько вин, виноделен, главные сорта."""
+        regions: dict[str, dict[str, Any]] = {}
+        for wine in self._wines.values():
+            name = wine.get("region")
+            if not name:
+                continue
+            info = regions.setdefault(name, {"name": name, "wines": 0, "makers": set(), "grapes": {}})
+            info["wines"] += 1
+            if wine.get("manufacturer"):
+                info["makers"].add(wine["manufacturer"])
+            for grape in wine.get("grapes") or []:
+                info["grapes"][grape] = info["grapes"].get(grape, 0) + 1
+        return [
+            {
+                "name": r["name"],
+                "wines": r["wines"],
+                "manufacturers": len(r["makers"]),
+                "grapes": [g for g, _ in sorted(r["grapes"].items(), key=lambda x: -x[1])[:4]],
+                "image": self.media.region(r["name"], 640),
+            }
+            for r in sorted(regions.values(), key=lambda r: -r["wines"])
+        ]
+
+    def taste_options(self) -> dict[str, list[dict[str, Any]]]:
+        """Для экрана «Мой вкус»: сорта (по числу вин, с фото сайта) и винодельни."""
+        grapes: dict[str, int] = {}
+        makers: dict[str, int] = {}
+        for wine in self._wines.values():
+            for grape in wine.get("grapes") or []:
+                grapes[grape] = grapes.get(grape, 0) + 1
+            if wine.get("manufacturer"):
+                makers[wine["manufacturer"]] = makers.get(wine["manufacturer"], 0) + 1
+        return {
+            "grapes": [{"name": g, "wines": n, "image": self.media.image_url(
+                (self.media.grapes.get(g) or {}).get("image"), 240)}
+                for g, n in sorted(grapes.items(), key=lambda x: (-x[1], x[0]))],
+            "manufacturers": [{"name": m, "wines": n} for m, n in sorted(makers.items(), key=lambda x: (-x[1], x[0]))],
+        }
+
+    def for_region(self, region: str, limit: int = 8) -> list[dict[str, Any]]:
+        """Вина региона: сначала с высоким народным рейтингом, не больше двух от винодельни."""
+        target = _norm(region)
+        wines = sorted(
+            (w for w in self._wines.values() if _norm(w.get("region")) == target),
+            key=lambda w: (-(w.get("public_rating") or 0), _norm(w.get("title"))),
+        )
+        picked, per_maker = [], {}
+        for wine in wines:
+            maker = _norm(wine.get("manufacturer"))
+            if per_maker.get(maker, 0) >= 2:
+                continue
+            per_maker[maker] = per_maker.get(maker, 0) + 1
+            picked.append(wine)
+            if len(picked) == limit:
+                break
+        return picked
+
+    def for_maker(self, maker_slug: str) -> list[dict[str, Any]]:
+        """Вина винодельни (manufacturer_slug = адрес её страницы на сайте), лучшие — первыми."""
+        return sorted(
+            (w for w in self._wines.values() if w.get("manufacturer_slug") == maker_slug),
+            key=lambda w: (-(w.get("public_rating") or 0), _norm(w.get("title"))),
+        )
+
+    def maker_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for wine in self._wines.values():
+            if wine.get("manufacturer_slug"):
+                counts[wine["manufacturer_slug"]] = counts.get(wine["manufacturer_slug"], 0) + 1
+        return counts
 
     def dish_names(self) -> list[tuple[str, int]]:
         """Все блюда каталога с числом вин — для экрана «подобрать к блюду»."""

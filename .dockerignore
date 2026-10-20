@@ -1,14 +1,26 @@
 # Контекст сборки — корень репозитория, но образам нужен только код и
-# requirements. Веса (13 ГБ) и данные (1+ ГБ) подключаются томами в compose.
+# requirements. Веса (~10 ГБ) и данные (1+ ГБ) подключаются томами в compose,
+# страница сканера (services/web/app) и конфиги nginx — тоже.
 *
 !libs/wine-embeddings/requirements.txt
 !libs/wine-embeddings/src/
+!libs/wine-logging/src/
 !services/catalog-scraper/requirements.txt
 !services/catalog-scraper/src/
 !services/indexer/requirements.txt
 !services/indexer/src/
+!services/embedder/requirements.txt
+!services/embedder/src/
 !services/search-api/requirements.txt
 !services/search-api/src/
+!services/catalog-service/requirements.txt
+!services/catalog-service/src/
+!services/user-service/requirements.txt
+!services/user-service/src/
+!services/analytics-service/requirements.txt
+!services/analytics-service/src/
+!services/log-collector/requirements.txt
+!services/log-collector/src/
 
 **/__pycache__
 **/*.py[cod]

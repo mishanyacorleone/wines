@@ -1,13 +1,11 @@
--r ../../libs/wine-embeddings/requirements.txt
+# Без torch и transformers: модели — в сервисах embedder и vllm, api ходит к ним по HTTP
 qdrant-client==1.12.2
 fastapi==0.115.6
-# без [standard]: watchfiles, websockets, uvloop сервису не нужны —
-# запросы идут по одному, узкое место — GPU, а не HTTP-парсер
+# без [standard]: watchfiles, websockets, uvloop сервису не нужны
 uvicorn==0.34.0
 python-multipart==0.0.20
 pydantic==2.10.4
+httpx==0.27.2
+Pillow==11.0.0
 # чтение .env при запуске
 python-dotenv==1.2.3
-# Процессор картинок Qwen3-VL (VLM-реранкер). Версия закреплена под torch 2.8:
-# свежий torchvision тянет несовместимый torch с CUDA 13
-torchvision==0.23.0

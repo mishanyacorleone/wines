@@ -1,0 +1,13 @@
+{
+  "model": "MiniCPM-V-4.7-1B",
+  "backend": "chat",
+  "photos": 100,
+  "load_s": 234.1,
+  "weights_gb": 2.93,
+  "peak_vram_gb": 3.22,
+  "median_ms": 870,
+  "p95_ms": 1683,
+  "max_ms": 1956,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

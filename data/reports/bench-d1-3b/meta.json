@@ -1,0 +1,13 @@
+{
+  "model": "d1-3B",
+  "backend": "d3",
+  "photos": 100,
+  "load_s": 58.5,
+  "weights_gb": 5.83,
+  "peak_vram_gb": 6.2,
+  "median_ms": 1196,
+  "p95_ms": 2411,
+  "max_ms": 3996,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

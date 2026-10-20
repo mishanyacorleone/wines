@@ -1,0 +1,13 @@
+{
+  "model": "jina-reranker-m0",
+  "backend": "jina-reranker",
+  "photos": 100,
+  "load_s": 3.3,
+  "weights_gb": 4.12,
+  "peak_vram_gb": 4.95,
+  "median_ms": 1168,
+  "p95_ms": 1293,
+  "max_ms": 1529,
+  "verify_threshold": 0.5,
+  "dequantize": false
+}

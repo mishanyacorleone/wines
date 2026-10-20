@@ -1,7 +1,18 @@
-"""Поисковый слой: картинка -> кандидаты из Qdrant -> выбор VLM."""
+"""Поисковый слой: картинка → вектор (embedder) → кандидаты из Qdrant → выбор VLM (vLLM).
+
+Модели — в своих сервисах; здесь только порядок шагов. Пайплайн асинхронный:
+пока один запрос ждёт модель, api принимает следующие, и vLLM собирает
+параллельные запросы в батч.
+
+Что падает и что тогда:
+- embedder или Qdrant — `ServiceUnavailable`: искать нечем, api отвечает 503;
+- vLLM — ответ по одной картинке (`degraded`): порядок векторного поиска,
+  решение «уточните» и список вариантов вместо одной карточки.
+"""
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import math
@@ -12,15 +23,12 @@ from typing import Any
 from PIL import Image
 from qdrant_client import QdrantClient
 
-from wine_embeddings import ImageEncoder
+from .remote import EmbedderClient, InvalidImageError, QdrantUnavailable, describe_error
+from .vlm import MAX_CANDIDATES, VlmClient, VlmUnavailable
 
-from .vlm import MAX_CANDIDATES, VlmReranker
+logger = logging.getLogger("search")
 
-logger = logging.getLogger(__name__)
-
-
-class InvalidImageError(Exception):
-    """Загруженный файл не является изображением."""
+__all__ = ["InvalidImageError", "SearchResult", "WineSearcher"]
 
 
 @dataclass
@@ -31,13 +39,12 @@ class SearchResult:
     search_ms: float
     vlm_ms: float = 0.0
     vlm_none_prob: float | None = None
-    # вероятность, что топ-1 — действительно вино с фото (VlmReranker.verify);
-    # None — VLM выключен или у топ-1 нет эталонного фото
+    # вероятность, что топ-1 — действительно вино с фото (VlmClient.verify);
+    # None — VLM выключен, недоступен или у топ-1 нет эталонного фото
     verify_prob: float | None = None
-
-    @property
-    def total_ms(self) -> float:
-        return self.decode_ms + self.encode_ms + self.search_ms + self.vlm_ms
+    # VLM включён, но не ответил: результат — по одной картинке
+    degraded: bool = False
+    total_ms: float = 0.0
 
 
 def _softmax(scores: list[float], temperature: float = 0.05) -> list[float]:
@@ -56,19 +63,28 @@ def _softmax(scores: list[float], temperature: float = 0.05) -> list[float]:
     return [e / total for e in exponents]
 
 
+def _decode(raw: bytes) -> Image.Image:
+    try:
+        image = Image.open(io.BytesIO(raw))
+        image.load()
+    except Exception as exc:  # Pillow бросает разнородные исключения
+        raise InvalidImageError(str(exc)) from exc
+    return image
+
+
 class WineSearcher:
     def __init__(
         self,
-        encoder: ImageEncoder,
+        embedder: EmbedderClient,
         client: QdrantClient,
         collection: str,
         *,
-        vlm: VlmReranker | None = None,
+        vlm: VlmClient | None = None,
         vlm_top_k: int = 5,
     ) -> None:
         if vlm is not None and not 1 <= vlm_top_k <= MAX_CANDIDATES:
             raise ValueError(f"VLM выбирает из 1–{MAX_CANDIDATES} кандидатов")
-        self._encoder = encoder
+        self._embedder = embedder
         self._client = client
         self._collection = collection
         self._vlm = vlm
@@ -78,29 +94,34 @@ class WineSearcher:
     def vlm_enabled(self) -> bool:
         return self._vlm is not None
 
-    def search(self, raw_image: bytes, top_k: int) -> SearchResult:
+    async def search(self, raw_image: bytes, top_k: int) -> SearchResult:
+        started_total = time.perf_counter()
         started = time.perf_counter()
-        try:
-            image = Image.open(io.BytesIO(raw_image))
-            image.load()
-        except Exception as exc:
-            raise InvalidImageError(str(exc)) from exc
+        image = await asyncio.to_thread(_decode, raw_image)
         decode_ms = (time.perf_counter() - started) * 1000
 
-        started = time.perf_counter()
-        vector = self._encoder.encode_image(image)
-        encode_ms = (time.perf_counter() - started) * 1000
+        # Фото для VLM готовится, пока считается вектор: это CPU api, а не GPU
+        prepared = asyncio.create_task(self._vlm.prepare(image)) if self._vlm is not None else None
+        try:
+            vector, encode_ms = await self._embedder.embed(raw_image)
+        except BaseException:
+            if prepared is not None:
+                prepared.cancel()
+            raise
 
         started = time.perf_counter()
         # VLM выбирает из своих кандидатов даже тогда, когда наружу нужен один
         # ответ (/v1/eval/predict)
         limit = max(top_k, self._vlm_top_k) if self.vlm_enabled else top_k
-        hits = self._client.query_points(
-            collection_name=self._collection,
-            query=vector.tolist(),
-            limit=limit,
-            with_payload=True,
-        ).points
+        try:
+            hits = (await asyncio.to_thread(
+                self._client.query_points,
+                collection_name=self._collection, query=vector, limit=limit, with_payload=True,
+            )).points
+        except Exception as exc:  # сеть, Qdrant перезапускается
+            if prepared is not None:
+                prepared.cancel()
+            raise QdrantUnavailable("Qdrant", describe_error(exc)) from exc
         search_ms = (time.perf_counter() - started) * 1000
 
         candidates = [
@@ -109,26 +130,36 @@ class WineSearcher:
             for hit in hits
         ]
 
-        vlm_ms, vlm_none_prob, verify_prob = 0.0, None, None
-        if self.vlm_enabled and candidates:
+        vlm_ms, vlm_none_prob, verify_prob, degraded = 0.0, None, None, False
+        if prepared is not None and candidates:
             # Картинка надёжно находит линейку, VLM выбирает вино внутри неё —
             # сверяя этикетку с карточками и эталонными фото, — а затем
             # отдельно проверяет, что выбранное вино и есть вино с фото
             started = time.perf_counter()
-            judged = candidates[: self._vlm_top_k]
-            verdict = self._vlm.judge(image, judged)
-            for candidate, prob in zip(judged, verdict.probs):
-                candidate["vlm_prob"] = prob
-            # sorted стабилен: при равных вероятностях остаётся порядок по картинке
-            judged = sorted(judged, key=lambda c: c["vlm_prob"], reverse=True)
-            candidates = judged + candidates[self._vlm_top_k:]
-            vlm_none_prob = verdict.none_prob
-            verify_prob = self._vlm.verify(image, candidates[0])
+            try:
+                query = await prepared
+                judged = candidates[: self._vlm_top_k]
+                verdict = await self._vlm.judge(query, judged)
+                for candidate, prob in zip(judged, verdict.probs):
+                    candidate["vlm_prob"] = prob
+                # sorted стабилен: при равных вероятностях остаётся порядок по картинке
+                judged = sorted(judged, key=lambda c: c["vlm_prob"], reverse=True)
+                candidates = judged + candidates[self._vlm_top_k:]
+                vlm_none_prob = verdict.none_prob
+                verify_prob = await self._vlm.verify(query, candidates[0])
+            except VlmUnavailable:
+                # Ответ по картинке: порядок векторного поиска, без вероятностей VLM
+                for candidate in candidates:
+                    candidate["vlm_prob"] = None
+                candidates.sort(key=lambda c: c["score"], reverse=True)
+                vlm_none_prob, verify_prob, degraded = None, None, True
             vlm_ms = (time.perf_counter() - started) * 1000
+        elif prepared is not None:
+            prepared.cancel()
 
         candidates = candidates[:top_k]
 
-        if self.vlm_enabled:
+        if self.vlm_enabled and not degraded:
             # С VLM уверенность — его вероятность: именно она решила порядок.
             # Кандидаты за пределами его выборки VLM не видел
             confidences = [c["vlm_prob"] or 0.0 for c in candidates]
@@ -139,5 +170,6 @@ class WineSearcher:
             candidate["confidence"] = confidence
 
         return SearchResult(
-            candidates, decode_ms, encode_ms, search_ms, vlm_ms, vlm_none_prob, verify_prob
+            candidates, decode_ms, encode_ms, search_ms, vlm_ms, vlm_none_prob, verify_prob,
+            degraded=degraded, total_ms=(time.perf_counter() - started_total) * 1000,
         )

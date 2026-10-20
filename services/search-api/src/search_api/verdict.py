@@ -5,7 +5,7 @@
 нужно явное решение: показать одну карточку или честно сказать «не нашли» и
 предложить аналоги из топ-10.
 
-Главный сигнал — попарная проверка VLM (`VlmReranker.verify`): «это одно и то
+Главный сигнал — попарная проверка VLM (`VlmClient.verify`): «это одно и то
 же вино?» по этикетке, тексту на бутылке, форме бутылки и цвету вина. Пороги
 подобраны на 99 размеченных реальных фото (`data/labels/real-photos.json`,
 VLM выбирает из топ-5, прогон `data/reports/service-final`):
@@ -25,7 +25,10 @@ VLM выбирает из топ-5, прогон `data/reports/service-final`):
 правки кода.
 
 Без VLM (WINE_VLM_ENABLED=0) решение по-старому держится на балле картинки
-и отрыве топ-1 от топ-2 — заметно слабее.
+и отрыве топ-1 от топ-2 — заметно слабее. Если VLM включён, но vLLM не ответил
+(упал, перезапускается), одной карточке без проверки не верим: «vlm_unavailable» —
+пользователь выбирает своё вино из вариантов по картинке, топ-1 остаётся ответом
+для /v1/eval/predict.
 """
 
 from __future__ import annotations
@@ -77,6 +80,7 @@ _MESSAGES = {
     "vlm_none": _NOT_IN_CATALOG,
     "low_similarity": _NOT_IN_CATALOG,
     "ambiguous": "Не удалось точно определить вино — выберите своё из похожих",
+    "vlm_unavailable": "Распознавание работает в упрощённом режиме — выберите своё вино из похожих",
 }
 
 
@@ -86,11 +90,15 @@ def decide(
     vlm_none_prob: float | None,
     verify_prob: float | None,
     thresholds: Thresholds,
+    degraded: bool = False,
 ) -> Verdict:
     """Причина отказа важна интерфейсу: «вина нет в каталоге» и «не смогли
     выбрать между похожими» — разные тексты для пользователя."""
     if not candidates:
         return _verdict("not_found", "empty")
+
+    if degraded:
+        return _verdict("not_found", "vlm_unavailable")
 
     top = candidates[0]
     if vlm_none_prob is not None:

@@ -1,0 +1,13 @@
+{
+  "model": "Qwen3-VL-Reranker-2B",
+  "backend": "qwen-reranker",
+  "photos": 100,
+  "load_s": 38.3,
+  "weights_gb": 3.96,
+  "peak_vram_gb": 4.61,
+  "median_ms": 842,
+  "p95_ms": 1083,
+  "max_ms": 1374,
+  "verify_threshold": 0.5,
+  "dequantize": false
+}

@@ -43,10 +43,10 @@ class Timings(BaseModel):
     """Разбивка времени ответа — нужна и для SLA, и для поиска узкого места."""
 
     decode_ms: float = Field(description="декодирование загруженного файла")
-    encode_ms: float = Field(description="инференс энкодера")
+    encode_ms: float = Field(description="инференс энкодера (сервис embedder)")
     search_ms: float = Field(description="поиск в Qdrant")
     vlm_ms: float = Field(default=0.0, description="выбор вина VLM и проверка выбранного")
-    total_ms: float
+    total_ms: float = Field(description="весь ответ api, включая сеть до моделей")
 
 
 class SearchResponse(BaseModel):
@@ -59,7 +59,7 @@ class SearchResponse(BaseModel):
         description="почему принято решение: confident (нашли), not_verified (проверка VLM: "
         "на фото другое вино), vlm_none (VLM: ни одна карточка не подходит), ambiguous "
         "(VLM колеблется между похожими винами), low_similarity (без VLM: фото мало похоже "
-        "на всё в каталоге), empty"
+        "на всё в каталоге), vlm_unavailable (vLLM не ответил — выдача по картинке), empty"
     )
     message: str = Field(default="", description="готовый текст для пользователя")
     top1: str | None = Field(
@@ -87,6 +87,7 @@ class SearchResponse(BaseModel):
         description="вероятность попарной проверки VLM, что топ-1 — вино с фото; "
         "null — VLM выключен или у топ-1 нет эталонного фото",
     )
+    degraded: bool = Field(default=False, description="VLM недоступен — ответ по одной картинке")
     timings: Timings
 
 
@@ -157,6 +158,86 @@ class SommelierAdvice(BaseModel):
     pairings: list[Pairing]
 
 
+class TourInfo(BaseModel):
+    """Винный тур с сайта (vino-svoe.ru/tours)."""
+
+    slug: str
+    title: str
+    short: str | None = None
+    about: str | None = None
+    kind: str | None = Field(default=None, description="«Экскурсия с дегустацией»")
+    duration: str | None = None
+    price: float | None = Field(default=None, description="₽ с человека")
+    group: list[int | None] = Field(default_factory=list, description="[мин, макс] человек")
+    individual: bool = False
+    schedule: list[dict[str, str]] = Field(default_factory=list, description="[{day: «сб», from: «11:00»}]")
+    address: str | None = None
+    image: str | None = None
+    link: str | None = Field(default=None, description="запись — на сайте винодельни")
+    url: str = Field(description="страница тура на vino-svoe.ru")
+
+
+class WineryBrief(BaseModel):
+    """Винодельня на карточке вина: «От бутылки — на винодельню»."""
+
+    slug: str
+    name: str
+    region: str | None = None
+    place: str | None = Field(default=None, description="«с. Долинное, Бахчисарайский район»")
+    image: str | None = None
+    lead: str | None = None
+    terrain: str | None = None
+    climate: str | None = None
+    tours: int = 0
+    price_from: float | None = None
+    tour: TourInfo | None = Field(default=None, description="первый тур — для превью")
+    has_point: bool = False
+
+
+class WineryPin(BaseModel):
+    slug: str
+    name: str
+    region: str | None = None
+    point: list[float] | None = Field(default=None, description="координаты винной карты (russia-map.json)")
+    tours: int = 0
+    logo: str | None = None
+    image: str | None = None
+    wines: int = Field(default=0, description="вин в каталоге")
+
+
+class WineryPerson(BaseModel):
+    name: str
+    role: str | None = None
+    image: str | None = None
+
+
+class WineryInfo(BaseModel):
+    slug: str
+    name: str
+    url: str = Field(description="страница винодельни на vino-svoe.ru")
+    region: str | None = None
+    address: str | None = None
+    place: str | None = None
+    point: list[float] | None = None
+    description: str | None = None
+    about: str | None = None
+    history: str | None = None
+    terroir: str | None = None
+    terrain: str | None = None
+    climate: str | None = None
+    square: float | None = Field(default=None, description="виноградники, га")
+    site: str | None = None
+    logo: str | None = None
+    gallery: list[str] = Field(default_factory=list)
+    people: list[WineryPerson] = Field(default_factory=list)
+    people_about: str | None = None
+    tours: list[TourInfo] = Field(default_factory=list)
+    nearby: list[WineryPin] = Field(default_factory=list)
+    region_tours: list[WineryPin] = Field(default_factory=list, description="винодельни региона с турами")
+    wines: list[WineSummary] = Field(default_factory=list, description="вина каталога, лучшие первыми")
+    wines_total: int = 0
+
+
 class WineCard(WineSummary):
     """Полная карточка найденного вина с рекомендациями."""
 
@@ -169,6 +250,7 @@ class WineCard(WineSummary):
     background_image: str | None = Field(default=None, description="фото виноградника для карточки")
     sommelier: SommelierAdvice
     similar: list[WineSummary] = Field(default_factory=list, description="похожие вина")
+    winery: WineryBrief | None = Field(default=None, description="винодельня и туры к ней")
 
 
 class ScanResponse(BaseModel):
@@ -179,8 +261,8 @@ class ScanResponse(BaseModel):
     )
     top1_confident: bool
     reason: str = Field(
-        description="confident, not_verified, vlm_none, ambiguous, low_similarity, empty — "
-        "см. SearchResponse.reason"
+        description="confident, not_verified, vlm_none, ambiguous, low_similarity, "
+        "vlm_unavailable, empty — см. SearchResponse.reason"
     )
     message: str = Field(description="готовый текст для пользователя")
     top1: str | None = Field(
@@ -193,12 +275,41 @@ class ScanResponse(BaseModel):
         description="при not_found — топ-10 аналогов; при match — остальные из топ-10 "
         "для кнопки «Не то вино?»",
     )
+    degraded: bool = Field(default=False, description="VLM недоступен — варианты по одной картинке")
     timings: Timings
 
 
 class DishPairingResponse(BaseModel):
     dish: str
     wines: list[WineSummary]
+
+
+class RegionInfo(BaseModel):
+    """Винный регион каталога — для винной карты России."""
+
+    name: str = Field(description="как в поле region карточки: «Кубань»")
+    wines: int = Field(description="вин региона в каталоге")
+    manufacturers: int = Field(description="виноделен")
+    grapes: list[str] = Field(default_factory=list, description="главные сорта, по числу вин")
+    image: str | None = Field(default=None, description="фото региона с сайта")
+
+
+class TasteGrape(BaseModel):
+    name: str
+    wines: int = Field(description="вин этого сорта в каталоге")
+    image: str | None = Field(default=None, description="фото сорта с сайта")
+
+
+class TasteMaker(BaseModel):
+    name: str
+    wines: int
+
+
+class TasteOptions(BaseModel):
+    """Варианты для экрана «Мой вкус»: сорта и винодельни каталога, самые частые — первыми."""
+
+    grapes: list[TasteGrape]
+    manufacturers: list[TasteMaker]
 
 
 class DishListItem(BaseModel):
@@ -222,17 +333,28 @@ class FeedbackResponse(BaseModel):
     ok: bool
 
 
+class ComponentHealth(BaseModel):
+    ok: bool
+    detail: str = ""
+
+
 class HealthResponse(BaseModel):
-    status: str
-    model_id: str
-    device: str
+    status: Literal["ok", "degraded"] = Field(
+        description="ok — всё работает; degraded — api жив, но недоступна зависимость "
+        "(модель, Qdrant): сканер отвечает 503 или по картинке, остальное работает"
+    )
     collection: str
-    indexed_points: int
-    vector_size: int
     vlm_enabled: bool
-    sommelier_wines: int = Field(default=0, description="вин в памяти сомелье")
+    components: dict[str, ComponentHealth] = Field(
+        description="qdrant, catalog (каталог в памяти), embedder, vlm"
+    )
     pairing_data: bool = Field(
         default=False,
         description="есть ли в индексе блюда и подача; false — нужен "
         "`python -m indexer --payload-only`",
     )
+
+
+class ReloadResponse(BaseModel):
+    wines: int
+    added: int

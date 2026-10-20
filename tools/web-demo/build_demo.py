@@ -2,7 +2,7 @@
 
     python tools/web-demo/build_demo.py
 
-Пишет в services/search-api/src/search_api/web/demo/ ответы в формате
+Пишет в services/web/app/demo/ ответы в формате
 /v1/scan, /v1/wines/{slug}, /v1/pairing — собранные тем же сомелье и тем же
 правилом решения, что и в сервисе, по catalog.jsonl и реальному прогону
 (data/reports/service-vlm5-top10/results.jsonl). Страница: /app/?demo=match или ?demo=not_found.
@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "services" / "search-api" / "src" / "search_api"
-OUT = SRC / "web" / "demo"
+OUT = ROOT / "services" / "web" / "app" / "demo"
 
 # Вино для экрана «нашли» и фото вне каталога для экрана «не найдено»
 MATCH_SLUG = "gevyurcztraminer-oranzh"
