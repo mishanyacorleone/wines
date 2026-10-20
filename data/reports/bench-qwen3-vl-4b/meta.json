@@ -1,0 +1,13 @@
+{
+  "model": "Qwen3-VL-4B-Instruct",
+  "backend": "qwen-vl",
+  "photos": 100,
+  "load_s": 84.0,
+  "weights_gb": 8.32,
+  "peak_vram_gb": 8.73,
+  "median_ms": 903,
+  "p95_ms": 1110,
+  "max_ms": 1311,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

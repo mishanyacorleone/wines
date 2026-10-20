@@ -1,27 +1,34 @@
-"""FastAPI-приложение сервиса поиска вина по фото."""
+"""FastAPI-приложение сервиса распознавания и каталога вин.
+
+api — без моделей и без GPU: вектор фото считает embedder, выбор и проверку
+вина — vLLM, кандидатов хранит Qdrant. Здесь — порядок шагов, решение
+«найдено / нет в каталоге», карточки и советы сомелье. Страницу /app/ отдаёт
+сервис web, поэтому упавший api не роняет сайт, а упавшая модель не роняет api:
+сканер честно говорит «распознавание временно недоступно» (или отвечает по
+одной картинке, если не ответил только vLLM), всё остальное работает.
+"""
 
 from __future__ import annotations
 
-import io
+import asyncio
 import json
 import logging
 import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from PIL import Image
 from qdrant_client import QdrantClient
 
-from wine_embeddings import get_encoder
-from wine_embeddings.runtime import bypass_proxy_for_localhost
+import wine_logging
+from wine_logging import format_ms
 
-from .config import api_settings
+from .catalog import CatalogStore
+from .config import api_settings, bypass_proxy_for_localhost
+from .remote import EmbedderClient, InvalidImageError, ServiceUnavailable
 from .schemas import (
     Candidate,
+    ComponentHealth,
     DishListItem,
     DishPairingResponse,
     FeedbackRequest,
@@ -29,142 +36,145 @@ from .schemas import (
     HealthResponse,
     PredictResponse,
     RegionInfo,
+    ReloadResponse,
     ScanResponse,
     SearchResponse,
+    TasteOptions,
     Timings,
     WineCard,
     WineSummary,
 )
-from .search import InvalidImageError, SearchResult, WineSearcher
+from .search import SearchResult, WineSearcher
 from .sommelier import SiteMedia, Sommelier, dish_icon
 from .verdict import Thresholds, Verdict, decide
-from .vlm import VlmReranker
+from .vlm import PromptBuilder, VlmClient
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("api")
+scan_log = logging.getLogger("scan")
+SLOW_SCAN_MS = 3000  # SLA из ТЗ
 
 _state: dict[str, object] = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Модель и клиент поднимаются на старте, а не на первом запросе.
+    """Старт за секунды: api не ждёт ни моделей, ни Qdrant.
 
-    По контракту организатора на запрос отводятся секунды — загрузка весов
-    внутри обработчика в них не укладывается.
+    Каталог грузится в фоне (catalog.CatalogStore.keep_fresh); embedder и vLLM
+    поднимаются сами по себе — пока их нет, скан отвечает 503 или по картинке.
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
     bypass_proxy_for_localhost()
-    encoder = get_encoder()
-    client = QdrantClient(url=api_settings.qdrant_url)
-    _state["encoder"] = encoder
-    _state["client"] = client
-    payloads = _load_payloads(client)
-    _state["sommelier"] = _build_sommelier(payloads)
-    vlm = _build_vlm(encoder.device)
-    _state["searcher"] = WineSearcher(
-        encoder,
-        client,
-        api_settings.collection,
-        vlm=vlm,
-        vlm_top_k=api_settings.vlm_top_k,
+    client = QdrantClient(url=api_settings.qdrant_url, timeout=api_settings.qdrant_timeout_s)
+    embedder = EmbedderClient(
+        api_settings.embedder_url,
+        timeout_s=api_settings.embedder_timeout_s,
+        connect_timeout_s=api_settings.connect_timeout_s,
+        cooldown_s=api_settings.unavailable_cooldown_s,
     )
-    if vlm is not None:
-        image_paths = [p["image_path"] for p in payloads if p.get("image_path")]
-        threading.Thread(
-            target=vlm.warm_reference_cache, args=(image_paths,), name="vlm-refs", daemon=True
-        ).start()
-    _warmup(_state["searcher"])  # type: ignore[arg-type]
-    logger.info("Сервис готов: %s, VLM %s", encoder.settings.model_id,
-                "включён" if api_settings.vlm_enabled else "выключен")
+    vlm = _build_vlm()
+    store = CatalogStore(
+        client, api_settings.collection, SiteMedia.load(image_api=api_settings.site_image_api),
+        on_loaded=_warm_references(vlm),
+    )
+    _state.update(client=client, embedder=embedder, vlm=vlm, catalog=store, searcher=WineSearcher(
+        embedder, client, api_settings.collection, vlm=vlm, vlm_top_k=api_settings.vlm_top_k,
+    ))
+    refresher = asyncio.create_task(store.keep_fresh(api_settings.catalog_refresh_s))
+    warmer = asyncio.create_task(_warm_pipeline())
+    logger.info("api готов: embedder %s, VLM %s, Qdrant %s", api_settings.embedder_url,
+                api_settings.vllm_url if vlm is not None else "выключен", api_settings.qdrant_url)
     yield
+    refresher.cancel()
+    warmer.cancel()
+    await embedder.close()
+    if vlm is not None:
+        await vlm.close()
     client.close()
 
 
-def _warmup(searcher: WineSearcher) -> None:
-    """Холостой поиск на старте.
-
-    Первый проход через CUDA-ядра энкодера и VLM и первый запрос к Qdrant
-    в разы медленнее следующих: без прогрева первый ответ занимал 3,4 с при
-    SLA 3 с, и платил бы за это первый запрос организатора.
-    """
-    buffer = io.BytesIO()
-    Image.new("RGB", (512, 512), "white").save(buffer, format="PNG")
-    searcher.search(buffer.getvalue(), 1)
-
-
-def _load_payloads(client: QdrantClient) -> list[dict]:
-    """Все payload коллекции — для сомелье.
-
-    Берутся из Qdrant, а не из файлов каталога: API не должен знать, где лежит
-    каталог, и индекс остаётся единственным источником истины о том, какие
-    вина вообще можно вернуть.
-    """
-    payloads, offset = [], None
-    while True:
-        points, offset = client.scroll(
-            api_settings.collection, limit=1000, offset=offset, with_payload=True
-        )
-        payloads.extend(p.payload or {} for p in points)
-        if offset is None:
-            break
-    return payloads
-
-
-def _build_sommelier(payloads: list[dict]) -> Sommelier:
-    sommelier = Sommelier(payloads, SiteMedia.load(image_api=api_settings.site_image_api))
-    if not sommelier.has_pairing_data:
-        # Индекс построен до того, как в payload появились блюда и подача:
-        # карточка будет без рекомендаций, пока не обновить payload
-        logger.warning(
-            "В индексе нет блюд и температуры подачи — обновите payload: "
-            "python -m indexer --payload-only"
-        )
-    logger.info("Сомелье: %d вин", len(sommelier))
-    return sommelier
-
-
-def _build_vlm(device: str) -> VlmReranker | None:
-    """VLM-реранкер, если включён в настройках.
-
-    Лимит VRAM процесса к этому моменту уже выставлен энкодером — VLM
-    укладывается в него же, а не в отдельный.
-    """
+def _build_vlm() -> VlmClient | None:
     if not api_settings.vlm_enabled:
         return None
-    if not (api_settings.vlm_model_dir / "config.json").exists():
-        raise RuntimeError(
-            f"VLM включён, но весов нет в {api_settings.vlm_model_dir}: "
-            "скачайте их infra/fetch-vlm.sh (или WINE_VLM_ENABLED=0 — только картинка)"
-        )
-    return VlmReranker(
-        api_settings.vlm_model_dir,
-        device=device,
+    prompts = PromptBuilder(
         query_max_pixels=api_settings.vlm_query_max_pixels,
         candidate_max_pixels=api_settings.vlm_candidate_max_pixels,
         with_candidate_images=api_settings.vlm_candidate_images,
         catalog_dir=api_settings.catalog_dir,
     )
+    return VlmClient(
+        api_settings.vllm_url,
+        prompts,
+        model=api_settings.vllm_model,
+        media_dir=api_settings.vllm_media_dir,
+        timeout_s=api_settings.vllm_timeout_s,
+        connect_timeout_s=api_settings.connect_timeout_s,
+        cooldown_s=api_settings.unavailable_cooldown_s,
+    )
+
+
+def _warm_references(vlm: VlmClient | None):
+    """После каждой загрузки каталога — уменьшенные эталоны новых вин, в фоне."""
+    def warm(payloads: list[dict]) -> None:
+        if vlm is None:
+            return
+        paths = [p["image_path"] for p in payloads if p.get("image_path")]
+        threading.Thread(
+            target=vlm.prompts.warm_reference_cache, args=(paths,), name="vlm-refs", daemon=True
+        ).start()
+    return warm
+
+
+async def _warm_pipeline(retry_s: float = 15.0) -> None:
+    """Холостой скан фото из каталога, когда поднялись все зависимости.
+
+    Первый запрос после старта стека шёл 10,8 с (19.10: вектор 6,8 с, Qdrant 1,3 с,
+    VLM 2,2 с — холодные ядра и кэши) при SLA 3 с, а первым может оказаться фото
+    организатора. Прогрев embedder на белой картинке этого не снимал.
+    """
+    store: CatalogStore = _state["catalog"]
+    searcher: WineSearcher = _state["searcher"]
+    raw = None
+    while True:
+        await asyncio.sleep(retry_s)
+        if not store.ready:
+            continue
+        if raw is None:
+            raw = await asyncio.to_thread(_sample_photo)
+            if raw is None:
+                logger.warning("Прогрев пропущен: в каталоге нет фото на диске")
+                return
+        try:
+            result = await searcher.search(raw, top_k=api_settings.vlm_top_k)
+        except ServiceUnavailable:
+            continue  # модели ещё грузятся — повторим
+        if result.degraded:
+            continue
+        timings = (f"вектор {format_ms(result.encode_ms)} · Qdrant {format_ms(result.search_ms)}"
+                   f" · VLM {format_ms(result.vlm_ms)}")
+        # Второй проход показывает, каким будет обычный запрос
+        warm = await searcher.search(raw, top_k=api_settings.vlm_top_k)
+        logger.info("Прогрев: первый скан %s (%s), повторный %s — сканер готов",
+                    format_ms(result.total_ms), timings, format_ms(warm.total_ms))
+        return
+
+
+def _sample_photo() -> bytes | None:
+    client: QdrantClient = _state["client"]
+    points, _ = client.scroll(api_settings.collection, limit=20, with_payload=True, with_vectors=False)
+    for point in points:
+        path = (point.payload or {}).get("image_path")
+        if path and (api_settings.catalog_dir / path).is_file():
+            return (api_settings.catalog_dir / path).read_bytes()
+    return None
 
 
 app = FastAPI(
     title="Сканер вин «Своё Вино»",
     description="Поиск карточки вина по фотографии этикетки.",
-    version="0.3.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
-
-_WEB_DIR = Path(__file__).resolve().parent / "web"
-if api_settings.web_enabled:
-    # Мобильный сканер: страница и её статика отдаются тем же сервисом, что и
-    # API, — один процесс, один порт, никакого CORS
-    app.mount("/app", StaticFiles(directory=_WEB_DIR, html=True), name="web")
-_CATALOG_IMAGES = api_settings.catalog_dir / "images"
-if _CATALOG_IMAGES.is_dir():
-    app.mount("/catalog-images", StaticFiles(directory=_CATALOG_IMAGES), name="catalog-images")
+app.add_middleware(wine_logging.RequestLogMiddleware)
 
 _THRESHOLDS = Thresholds(
     min_verify_prob=api_settings.accept_min_verify_prob,
@@ -176,18 +186,15 @@ _THRESHOLDS = Thresholds(
 _feedback_lock = threading.Lock()
 
 
-def _searcher() -> WineSearcher:
-    searcher = _state.get("searcher")
-    if searcher is None:
-        raise HTTPException(status_code=503, detail="Сервис ещё не инициализирован")
-    return searcher  # type: ignore[return-value]
+def _store() -> CatalogStore:
+    return _state["catalog"]  # type: ignore[return-value]
 
 
 def _sommelier() -> Sommelier:
-    sommelier = _state.get("sommelier")
+    sommelier = _store().sommelier
     if sommelier is None:
-        raise HTTPException(status_code=503, detail="Сервис ещё не инициализирован")
-    return sommelier  # type: ignore[return-value]
+        raise HTTPException(status_code=503, detail="Каталог вин ещё загружается — попробуйте через минуту")
+    return sommelier
 
 
 async def _read_upload(image: UploadFile) -> bytes:
@@ -199,11 +206,20 @@ async def _read_upload(image: UploadFile) -> bytes:
     return raw
 
 
-def _run_search(raw: bytes, top_k: int) -> SearchResult:
+async def _run_search(raw: bytes, top_k: int) -> SearchResult:
+    searcher: WineSearcher = _state["searcher"]  # type: ignore[assignment]
     try:
-        return _searcher().search(raw, top_k)
+        return await searcher.search(raw, top_k)
     except InvalidImageError as exc:
-        raise HTTPException(status_code=400, detail=f"Не изображение: {exc}") from exc
+        raise HTTPException(status_code=400, detail="Файл не похож на фото — пришлите снимок в JPEG, PNG или WebP") from exc
+    except ServiceUnavailable as exc:
+        scan_log.error("Скан не выполнен: %s недоступен (%s) → 503", exc.service, exc.reason)
+        wine_logging.mark_logged()
+        raise HTTPException(
+            status_code=503,
+            detail="Распознавание временно недоступно — попробуйте через минуту. "
+                   "Остальные разделы сайта работают",
+        ) from exc
 
 
 def _decide(result: SearchResult) -> Verdict:
@@ -212,30 +228,82 @@ def _decide(result: SearchResult) -> Verdict:
         vlm_none_prob=result.vlm_none_prob,
         verify_prob=result.verify_prob,
         thresholds=_THRESHOLDS,
+        degraded=result.degraded,
     )
+
+
+def _log_scan(kind: str, result: SearchResult, verdict: Verdict) -> None:
+    """Одна строка на распознавание: что нашли, насколько уверены, сколько заняло."""
+    wine_logging.mark_logged()
+    top = result.candidates[0] if result.candidates else None
+    name = f"«{top.get('title') or top['slug']}» ({top['slug']})" if top else "—"
+    timing = (f"{format_ms(result.total_ms)} (вектор {format_ms(result.encode_ms)} · "
+              f"Qdrant {format_ms(result.search_ms)} · VLM {format_ms(result.vlm_ms)})")
+    # Дольше SLA — WARN той же строкой: строки «медленно» от http больше нет
+    slow = result.total_ms > SLOW_SCAN_MS
+    if slow:
+        timing += " — медленно"
+    log = scan_log.warning if slow else scan_log.info
+    if verdict.status == "match":
+        log("%s: найдено %s — выбор VLM %.2f, проверка %s · %s", kind, name,
+                      top.get("vlm_prob") or top["confidence"], _prob(result.verify_prob), timing)
+    elif verdict.reason == "vlm_unavailable":
+        scan_log.warning("%s: VLM недоступен — ответ по картинке, ближе всего %s (сходство %.3f) · %s",
+                         kind, name, top["image_score"], timing)
+    elif verdict.absent:
+        log("%s: вина нет в каталоге (%s: проверка %s, «ни одна» %s), ближе всего %s · %s",
+                      kind, verdict.reason, _prob(result.verify_prob), _prob(result.vlm_none_prob), name, timing)
+    else:
+        log("%s: не уверены (%s), варианты, первым %s · %s", kind, verdict.reason, name, timing)
+
+
+def _prob(value: float | None) -> str:
+    return "—" if value is None else f"{value:.2f}"
 
 
 @app.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
-    encoder = _state["encoder"]
-    client: QdrantClient = _state["client"]  # type: ignore[assignment]
-    info = client.get_collection(api_settings.collection)
+async def health() -> HealthResponse:
+    """Жив ли api и что с зависимостями. 200 всегда, пока процесс отвечает:
+    упавшая модель — не повод перезапускать api (status = degraded)."""
+    store = _store()
+    embedder: EmbedderClient = _state["embedder"]  # type: ignore[assignment]
+    vlm: VlmClient | None = _state["vlm"]  # type: ignore[assignment]
+
+    async def qdrant_points() -> int | None:
+        try:
+            return await asyncio.to_thread(store.points_count)
+        except Exception:  # noqa: BLE001
+            return None
+
+    points, embedder_info, vlm_ok = await asyncio.gather(
+        qdrant_points(), embedder.health(), vlm.health() if vlm is not None else asyncio.sleep(0, None),
+    )
+    components = {
+        "qdrant": ComponentHealth(ok=points is not None, detail=f"{points} вин" if points is not None else "недоступен"),
+        "catalog": ComponentHealth(ok=store.ready, detail=f"{store.points} вин в памяти" if store.ready else "загружается"),
+        "embedder": ComponentHealth(
+            ok=embedder_info is not None,
+            detail=f"{embedder_info['model_id']} на {embedder_info['device']}" if embedder_info else "недоступен",
+        ),
+    }
+    if vlm is not None:
+        components["vlm"] = ComponentHealth(ok=bool(vlm_ok), detail=api_settings.vllm_url if vlm_ok else "недоступен")
     return HealthResponse(
-        status="ok",
-        model_id=encoder.settings.model_id,  # type: ignore[union-attr]
-        device=encoder.device,  # type: ignore[union-attr]
+        status="ok" if all(c.ok for c in components.values()) else "degraded",
         collection=api_settings.collection,
-        indexed_points=info.points_count or 0,
-        vector_size=info.config.params.vectors.size,
-        vlm_enabled=_searcher().vlm_enabled,
-        sommelier_wines=len(_sommelier()),
-        pairing_data=_sommelier().has_pairing_data,
+        vlm_enabled=vlm is not None,
+        components=components,
+        pairing_data=store.sommelier.has_pairing_data if store.sommelier else False,
     )
 
 
-@app.get("/", include_in_schema=False)
-def index() -> RedirectResponse:
-    return RedirectResponse("/app/" if api_settings.web_enabled else "/docs")
+@app.post("/internal/catalog/reload", response_model=ReloadResponse, include_in_schema=False)
+async def reload_catalog() -> ReloadResponse:
+    """Перечитать каталог из Qdrant — зовёт синхронизация после добавления вин.
+    Шлюз сюда не пускает: /internal доступен только внутри сети сервисов."""
+    added = await asyncio.to_thread(_store().load, "запрос синхронизации")
+    wine_logging.mark_logged()  # «Каталог перечитан…» уже в логе; 4 с на 2200 вин — норма, не «медленно»
+    return ReloadResponse(wines=_store().points, added=added)
 
 
 @app.post("/v1/search", response_model=SearchResponse)
@@ -252,13 +320,14 @@ async def search(
     """
     top_k = min(top_k, api_settings.max_top_k)
     raw = await _read_upload(image)
-    result = _run_search(raw, top_k)
+    result = await _run_search(raw, top_k)
 
     candidates = [Candidate(**_candidate_fields(c)) for c in result.candidates]
     confidences = [c.confidence for c in candidates]
     # margin — по тому же сигналу, что задал порядок: с VLM score не монотонен
     ranking = confidences if result.vlm_none_prob is not None else [c.score for c in candidates]
     verdict = _decide(result)
+    _log_scan("Поиск", result, verdict)
 
     return SearchResponse(
         status=verdict.status,
@@ -272,6 +341,7 @@ async def search(
         margin=(ranking[0] - ranking[1]) if len(ranking) > 1 else 0.0,
         vlm_none_prob=result.vlm_none_prob,
         verify_prob=result.verify_prob,
+        degraded=result.degraded,
         timings=_timings(result),
     )
 
@@ -285,8 +355,9 @@ async def scan(image: UploadFile = File(..., description="фотография �
     топ-10 как аналоги: самые похожие вина каталога.
     """
     raw = await _read_upload(image)
-    result = _run_search(raw, api_settings.default_top_k)
+    result = await _run_search(raw, api_settings.default_top_k)
     verdict = _decide(result)
+    _log_scan("Скан", result, verdict)
 
     shortlist = [
         _wine_summary(c, rank=c["rank"], confidence=round(c["confidence"], 4))
@@ -306,6 +377,7 @@ async def scan(image: UploadFile = File(..., description="фотография �
         top1=_top1(result, verdict),
         wine=wine,
         alternatives=shortlist,
+        degraded=result.degraded,
         timings=_timings(result),
     )
 
@@ -325,7 +397,9 @@ def catalog_search(
     limit: int = Query(default=12, ge=1, le=50),
 ) -> list[WineSummary]:
     """Поиск вина по тексту — лупа в шапке сканера."""
-    return [_wine_summary(w) for w in _sommelier().search(q, limit=limit)]
+    found = _sommelier().search(q, limit=limit)
+    logging.getLogger("catalog").info("Поиск по каталогу «%s»: %d вин", q, len(found))
+    return [_wine_summary(w) for w in found]
 
 
 @app.get("/v1/pairing/dishes", response_model=list[DishListItem])
@@ -361,6 +435,12 @@ def region_wines(region: str, limit: int = Query(default=8, ge=1, le=30)) -> lis
     return [_wine_summary(w) for w in _sommelier().for_region(region, limit=limit)]
 
 
+@app.get("/v1/taste/options", response_model=TasteOptions)
+def taste_options() -> TasteOptions:
+    """Сорта (с фото) и винодельни каталога — для выбора в «Моём вкусе»; профиль хранит сервис пользователей."""
+    return TasteOptions(**_sommelier().taste_options())
+
+
 @app.post("/v1/feedback", response_model=FeedbackResponse)
 def feedback(body: FeedbackRequest) -> FeedbackResponse:
     """«Да, это оно» / «выбрал другое» / «моего вина нет».
@@ -372,6 +452,12 @@ def feedback(body: FeedbackRequest) -> FeedbackResponse:
     api_settings.feedback_dir.mkdir(parents=True, exist_ok=True)
     with _feedback_lock, (api_settings.feedback_dir / "feedback.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    if body.action == "confirmed":
+        scan_log.info("Отзыв: пользователь подтвердил %s", body.predicted_slug)
+    elif body.action == "picked_alternative":
+        scan_log.info("Отзыв: пользователь выбрал %s вместо %s", body.chosen_slug, body.predicted_slug)
+    else:
+        scan_log.info("Отзыв: «моего вина здесь нет» (показали %s)", body.predicted_slug)
     return FeedbackResponse(ok=True)
 
 
@@ -384,8 +470,10 @@ async def predict(image: UploadFile = File(...)) -> PredictResponse:
     null}, если вина нет в каталоге (скрипт организатора пишет predicted_slug = null).
     """
     raw = await _read_upload(image)
-    result = _run_search(raw, 1)
-    return PredictResponse(slug=_top1(result, _decide(result)))
+    result = await _run_search(raw, 1)
+    verdict = _decide(result)
+    _log_scan("Оценка (eval/predict)", result, verdict)
+    return PredictResponse(slug=_top1(result, verdict))
 
 
 def _top1(result: SearchResult, verdict: Verdict) -> str | None:
@@ -419,9 +507,10 @@ def _image_url(payload: dict) -> str | None:
     Локальная копия нужна на проверке: она не зависит от доступности сайта.
     """
     image_path = payload.get("image_path")
-    if image_path and _CATALOG_IMAGES.is_dir() and (api_settings.catalog_dir / image_path).exists():
+    if image_path and (api_settings.catalog_dir / image_path).exists():
+        # фото отдаёт сервис web (/catalog-images/ — папка data/catalog/images)
         return "/catalog-images/" + image_path.removeprefix("images/")
-    sommelier = _state.get("sommelier")
+    sommelier = _store().sommelier
     media = sommelier.media if sommelier else SiteMedia(image_api=api_settings.site_image_api)
     return media.image_url(payload.get("image_url"), 1160)
 

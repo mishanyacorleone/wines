@@ -19,11 +19,19 @@
 отвечает «0» — даже когда на фото другое вино того же производителя. Попарный вопрос она решает честнее: на размеченных фото
 отказ по нему ловит 31 из 33 вин вне каталога против 7 по ответу «0»
 (docs/baseline-results.md, «Отказ "нет в каталоге"»).
+
+Модель работает в отдельном сервисе vLLM (compose-сервис `vllm`): здесь — только
+промпты, картинки и HTTP. Упал vLLM — `VlmUnavailable`, и сервис отвечает по одной
+картинке (search.py), а не ошибкой.
 """
 
 from __future__ import annotations
 
+import asyncio
+import base64
+import io
 import logging
+import math
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -31,9 +39,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 from PIL import Image, ImageOps
 
-logger = logging.getLogger(__name__)
+from wine_logging import trace_headers
+
+from .remote import Breaker, ServiceUnavailable, describe_error
+
+logger = logging.getLogger("vlm")
 
 PROMPT_HEAD = (
     "На фото — бутылка вина, снятая покупателем. Ниже карточки вин из каталога. "
@@ -99,97 +112,99 @@ def describe(candidate: dict[str, Any]) -> str:
     return text
 
 
-class VlmReranker:
-    """Обёртка над Qwen3-VL. Веса грузятся один раз, только с диска."""
+
+
+class VlmUnavailable(ServiceUnavailable):
+    pass
+
+
+class PromptBuilder:
+    """Промпты и картинки для VLM — без модели и сети.
+
+    Отдельно от клиента, чтобы стенд сравнения моделей (eval_runner.model_bench)
+    задавал моделям ровно те же вопросы с теми же картинками, что и сервис.
+    """
 
     def __init__(
         self,
-        model_dir: Path,
         *,
-        device: str,
         query_max_pixels: int,
         candidate_max_pixels: int,
-        with_candidate_images: bool,
+        with_candidate_images: bool = True,
         catalog_dir: Path | None = None,
     ) -> None:
-        import torch
-        from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
+        self.query_max_pixels = query_max_pixels
+        self.candidate_max_pixels = candidate_max_pixels
+        self.with_candidate_images = with_candidate_images and catalog_dir is not None
+        self.catalog_dir = catalog_dir
 
-        self._torch = torch
-        self._device = device
-        self._processor = AutoProcessor.from_pretrained(model_dir, local_files_only=True)
-        dtype = torch.bfloat16 if device.startswith("cuda") else torch.float32
-        self._model = Qwen3VLForConditionalGeneration.from_pretrained(
-            model_dir, dtype=dtype, attn_implementation="sdpa", local_files_only=True
-        ).to(device).eval()
+    def fit_query(self, image: Image.Image) -> Image.Image:
+        return _fit(image, self.query_max_pixels)
 
-        self._query_max_pixels = query_max_pixels
-        self._candidate_max_pixels = candidate_max_pixels
-        self._with_candidate_images = with_candidate_images and catalog_dir is not None
-        self._catalog_dir = catalog_dir
-
-        tokenizer = self._processor.tokenizer
-        # [0] — «ни одна не подходит», дальше — карточки по порядку
-        self._answer_ids = []
-        for label in NONE_LABEL + LABELS:
-            ids = tokenizer.encode(label, add_special_tokens=False)
-            if len(ids) != 1:
-                raise RuntimeError(f"метка {label!r} не один токен: {ids}")
-            self._answer_ids.append(ids[0])
-        # «Да» и «Нет» — по два токена; первые токены у них разные, и их хватает,
-        # чтобы сравнить два ответа
-        self._yes_no_ids = [
-            tokenizer.encode(word, add_special_tokens=False)[0] for word in ("Да", "Нет")
-        ]
-        if self._yes_no_ids[0] == self._yes_no_ids[1]:
-            raise RuntimeError("«Да» и «Нет» начинаются с одного токена")
-        self._lock = threading.Lock()
-        logger.info("VLM готов: %s (картинки кандидатов: %s)", model_dir,
-                    "да" if self._with_candidate_images else "нет")
-
-    def _messages(self, image: Image.Image, candidates: list[dict[str, Any]]) -> list[dict]:
+    def messages(self, image: Image.Image, candidates: list[dict[str, Any]]) -> list[dict]:
+        """Выбор среди кандидатов. image — фото покупателя (уменьшается здесь же)."""
         content: list[dict[str, Any]] = [
-            {"type": "image", "image": _fit(image, self._query_max_pixels)},
+            {"type": "image", "image": self.fit_query(image), "query": True},
             {"type": "text", "text": PROMPT_HEAD + "\n\n"},
         ]
         for label, candidate in zip(LABELS, candidates):
             content.append({"type": "text", "text": f"{label}. {describe(candidate)}\n"})
-            reference = self._reference(candidate)
+            reference = self.reference(candidate)
             if reference is not None:
-                content.append({"type": "image", "image": reference})
+                content.append(self.reference_part(candidate, reference))
         content.append({"type": "text", "text": PROMPT_TAIL})
         return [{"role": "user", "content": content}]
 
-    def _reference(self, candidate: dict[str, Any], *, force: bool = False) -> Image.Image | None:
+    def verify_messages(self, image: Image.Image, candidate: dict[str, Any]) -> list[dict] | None:
+        """Попарная проверка; None — у кандидата нет эталонного фото.
+
+        Без эталона сравнивать не с чем: вопрос про «одну и ту же этикетку»
+        по одному тексту карточки модель решает заметно хуже.
+        """
+        reference = self.reference(candidate, force=True)
+        if reference is None:
+            return None
+        return [{"role": "user", "content": [
+            {"type": "image", "image": self.fit_query(image), "query": True},
+            self.reference_part(candidate, reference),
+            {"type": "text", "text": VERIFY_PROMPT.format(description=describe(candidate))},
+        ]}]
+
+    @staticmethod
+    def reference_part(candidate: dict[str, Any], reference: Image.Image) -> dict[str, Any]:
+        # source — путь эталона в каталоге: vLLM может прочесть кэш сам, без base64
+        return {"type": "image", "image": reference, "source": candidate["image_path"]}
+
+    def reference(self, candidate: dict[str, Any], *, force: bool = False) -> Image.Image | None:
         """Эталонное фото кандидата; force — даже если в выборе карточек они выключены."""
-        if not (self._with_candidate_images or force) or self._catalog_dir is None:
+        if not (self.with_candidate_images or force) or self.catalog_dir is None:
             return None
         if not candidate.get("image_path"):
             return None
-        return self._load_reference(candidate["image_path"])
+        return self.load_reference(candidate["image_path"])
 
     @property
-    def _cache_dir(self) -> Path:
+    def cache_dir(self) -> Path:
         # Лимит пикселей в имени папки: сменили лимит — кэш строится заново
-        return self._catalog_dir / f"vlm-refs-{self._candidate_max_pixels}"
+        return self.catalog_dir / f"vlm-refs-{self.candidate_max_pixels}"
 
-    def _load_reference(self, image_path: str) -> Image.Image | None:
+    def load_reference(self, image_path: str) -> Image.Image | None:
         """Уменьшенный эталон из кэша на диске, при промахе — из оригинала.
 
         Оригиналы каталога — PNG по 1–2,5 МБ: декодировать десяток на запрос
         стоило до 2,5 с при SLA 3 с. Уменьшенная копия читается за миллисекунды.
         Кэш — тоже PNG, без потерь: VLM видит те же пиксели, что и без кэша.
         """
-        cached = self._cache_dir / image_path
+        cached = self.cache_dir / image_path
         if cached.exists():
             with Image.open(cached) as image:
                 image.load()
                 return image
-        path = self._catalog_dir / image_path
+        path = self.catalog_dir / image_path
         if not path.exists():
             return None
         with Image.open(path) as image:
-            fitted = _fit(image, self._candidate_max_pixels)
+            fitted = _fit(image, self.candidate_max_pixels)
         try:
             cached.parent.mkdir(parents=True, exist_ok=True)
             # через временный файл: параллельный запрос не прочтёт недописанный PNG
@@ -203,57 +218,169 @@ class VlmReranker:
     def warm_reference_cache(self, image_paths: list[str], workers: int = 8) -> None:
         """Строит недостающие уменьшенные эталоны — один раз, дальше они на диске.
 
-        Запускается в фоне при старте сервиса: запросы, пришедшие раньше,
-        просто читают оригинал сами, как без кэша.
+        Запускается в фоне при старте сервиса и после добавления вин: запросы,
+        пришедшие раньше, просто читают оригинал сами, как без кэша.
         """
-        if self._catalog_dir is None:
+        if self.catalog_dir is None:
             return
-        missing = [p for p in image_paths if not (self._cache_dir / p).exists()]
+        missing = [p for p in image_paths if not (self.cache_dir / p).exists()]
         if not missing:
             return
         started = time.perf_counter()
         # Декодирование PNG в Pillow отпускает GIL — потоков достаточно
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            list(pool.map(self._load_reference, missing))
+            list(pool.map(self.load_reference, missing))
         logger.info("Кэш эталонов VLM: %d фото за %.0f с → %s",
-                    len(missing), time.perf_counter() - started, self._cache_dir)
+                    len(missing), time.perf_counter() - started, self.cache_dir)
 
-    def _next_token_logits(self, messages: list[dict]):
-        inputs = self._processor.apply_chat_template(
-            messages,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_dict=True,
-            return_tensors="pt",
-        ).to(self._device)
-        with self._lock, self._torch.inference_mode():
-            return self._model(**inputs, logits_to_keep=1).logits[0, -1]
 
-    def judge(self, image: Image.Image, candidates: list[dict[str, Any]]) -> VlmVerdict:
+class VlmClient:
+    """Qwen3-VL в сервисе vLLM: выбор среди кандидатов и попарная проверка.
+
+    Ответ — один токен (max_tokens=1) из allowed_token_ids; vLLM запущен с
+    --logprobs-mode=processed_logprobs, поэтому logprobs — уже после ограничения,
+    то есть softmax только по меткам. На 100 размеченных фото — 96,2%, «нет в
+    каталоге» 30 из 33 (docs/baseline-results.md, «vLLM»).
+
+    Картинки уменьшает сервис (_fit) — vLLM видит те же пиксели. Фото покупателя
+    уходит PNG в base64 (кодируется один раз на запрос, `prepare`); эталон — путём
+    к уменьшенной копии в кэше (`file://`), если vLLM видит каталог (`media_dir`,
+    --allowed-local-media-path): кодирование шести PNG на запрос стоило ~0,5 с.
+    Id меток берутся у самого vLLM (/tokenize) — токенизатор в api не нужен.
+    """
+
+    backend = "vllm"
+
+    def __init__(
+        self,
+        url: str,
+        prompts: PromptBuilder,
+        *,
+        model: str,
+        media_dir: str,
+        timeout_s: float,
+        connect_timeout_s: float,
+        cooldown_s: float,
+    ) -> None:
+        self.url = url.rstrip("/")
+        self.prompts = prompts
+        self._model = model
+        self._media_dir = media_dir.rstrip("/")
+        # trust_env=False: исходящий трафик машины идёт через прокси, а vLLM — локальный
+        self._http = httpx.AsyncClient(
+            base_url=self.url,
+            timeout=httpx.Timeout(timeout_s, connect=connect_timeout_s),
+            trust_env=False,
+            limits=httpx.Limits(max_connections=64),
+        )
+        self.breaker = Breaker("vLLM", cooldown_s)
+        # [0] — «ни одна не подходит», дальше — карточки по порядку; «Да», «Нет»
+        self._answer_ids: list[int] | None = None
+        self._yes_no_ids: list[int] | None = None
+
+    async def _token_ids(self) -> tuple[list[int], list[int]]:
+        if self._answer_ids is None or self._yes_no_ids is None:
+            answer = [await self._tokenize(label) for label in NONE_LABEL + LABELS]
+            if any(len(ids) != 1 for ids in answer):
+                raise RuntimeError(f"метки VLM не по одному токену: {answer}")
+            # «Да» и «Нет» — по два токена; первые у них разные, и их хватает, чтобы сравнить ответы
+            yes_no = [(await self._tokenize(word))[0] for word in ("Да", "Нет")]
+            if yes_no[0] == yes_no[1]:
+                raise RuntimeError("«Да» и «Нет» начинаются с одного токена")
+            self._answer_ids, self._yes_no_ids = [ids[0] for ids in answer], yes_no
+        return self._answer_ids, self._yes_no_ids
+
+    async def _tokenize(self, text: str) -> list[int]:
+        response = await self._http.post("/tokenize", json={
+            "model": self._model, "prompt": text, "add_special_tokens": False,
+        })
+        response.raise_for_status()
+        return response.json()["tokens"]
+
+    async def judge(self, query: "PreparedQuery", candidates: list[dict[str, Any]]) -> VlmVerdict:
         if not candidates:
             return VlmVerdict([], 1.0)
         if len(candidates) > MAX_CANDIDATES:
             raise ValueError(f"VLM выбирает максимум из {MAX_CANDIDATES} кандидатов")
-
-        logits = self._next_token_logits(self._messages(image, candidates))
+        messages = await asyncio.to_thread(self.prompts.messages, query.image, candidates)
         # Softmax только по допустимым ответам: «0» и метки переданных кандидатов
-        allowed = self._answer_ids[: len(candidates) + 1]
-        probs = self._torch.softmax(logits[allowed].float(), dim=-1).tolist()
+        probs = await self._label_probs(messages, query, lambda ids: ids[0][: len(candidates) + 1])
         return VlmVerdict(probs=probs[1:], none_prob=probs[0])
 
-    def verify(self, image: Image.Image, candidate: dict[str, Any]) -> float | None:
-        """Вероятность, что на фото именно это вино; None — нет эталонного фото.
-
-        Без эталона сравнивать не с чем: вопрос про «одну и ту же этикетку»
-        по одному тексту карточки модель решает заметно хуже.
-        """
-        reference = self._reference(candidate, force=True)
-        if reference is None:
+    async def verify(self, query: "PreparedQuery", candidate: dict[str, Any]) -> float | None:
+        """Вероятность, что на фото именно это вино; None — нет эталонного фото."""
+        messages = await asyncio.to_thread(self.prompts.verify_messages, query.image, candidate)
+        if messages is None:
             return None
-        messages = [{"role": "user", "content": [
-            {"type": "image", "image": _fit(image, self._query_max_pixels)},
-            {"type": "image", "image": reference},
-            {"type": "text", "text": VERIFY_PROMPT.format(description=describe(candidate))},
-        ]}]
-        logits = self._next_token_logits(messages)
-        return self._torch.softmax(logits[self._yes_no_ids].float(), dim=-1)[0].item()
+        return (await self._label_probs(messages, query, lambda ids: ids[1]))[0]
+
+    async def prepare(self, image: Image.Image) -> "PreparedQuery":
+        """Фото покупателя для обоих проходов: уменьшенное и закодированное один раз."""
+        def encode() -> PreparedQuery:
+            # уменьшенное фото: в промптах _fit его уже не меняет (площадь в пределах лимита)
+            fitted = self.prompts.fit_query(image)
+            return PreparedQuery(image=fitted, data_url=_data_url(fitted))
+        return await asyncio.to_thread(encode)
+
+    def _image_url(self, part: dict[str, Any], query: "PreparedQuery") -> str:
+        if part.get("query"):
+            return query.data_url
+        source = part.get("source")
+        if self._media_dir and source and (self.prompts.cache_dir / source).exists():
+            return f"file://{self._media_dir}/{self.prompts.cache_dir.name}/{source}"
+        return _data_url(part["image"])
+
+    async def _label_probs(self, messages: list[dict], query: "PreparedQuery", pick) -> list[float]:
+        """Вероятности меток в следующей позиции, нормированные между собой."""
+        self.breaker.check(VlmUnavailable)
+        try:
+            token_ids = pick(await self._token_ids())
+            content = await asyncio.to_thread(lambda: [
+                {"type": "image_url", "image_url": {"url": self._image_url(part, query)}}
+                if part["type"] == "image" else {"type": "text", "text": part["text"]}
+                for part in messages[0]["content"]
+            ])
+            response = await self._http.post("/v1/chat/completions", headers=trace_headers(), json={
+                "model": self._model,
+                "messages": [{"role": "user", "content": content}],
+                "max_tokens": 1,
+                "temperature": 0,
+                "logprobs": True,
+                "top_logprobs": len(token_ids),
+                "allowed_token_ids": token_ids,
+                # токены — как «token_id:24110»: строка токена не годится, «Да» = «Д» + «а»
+                "return_tokens_as_token_ids": True,
+            })
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            self.breaker.failure(describe_error(exc))
+            raise VlmUnavailable("vLLM", describe_error(exc)) from exc
+        self.breaker.success()
+        top = response.json()["choices"][0]["logprobs"]["content"][0]["top_logprobs"]
+        by_id = {int(t["token"].rsplit(":", 1)[1]): math.exp(t["logprob"]) for t in top}
+        probs = [by_id.get(i, 0.0) for i in token_ids]
+        total = sum(probs) or 1.0
+        return [p / total for p in probs]
+
+    async def health(self) -> bool:
+        try:
+            response = await self._http.get("/health", timeout=2)
+        except httpx.HTTPError:
+            return False
+        return response.status_code == 200
+
+    async def close(self) -> None:
+        await self._http.aclose()
+
+
+@dataclass(frozen=True)
+class PreparedQuery:
+    image: Image.Image
+    data_url: str
+
+
+def _data_url(image: Image.Image) -> str:
+    buffer = io.BytesIO()
+    # без потерь, но слабое сжатие: с уровнем по умолчанию (6) — в разы дольше
+    image.save(buffer, format="PNG", compress_level=1)
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()

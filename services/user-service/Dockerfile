@@ -13,8 +13,9 @@ WORKDIR /app
 COPY services/user-service/requirements.txt services/user-service/requirements.txt
 RUN pip install -r services/user-service/requirements.txt
 
+COPY libs/wine-logging/src libs/wine-logging/src
 COPY services/user-service/src services/user-service/src
-ENV PYTHONPATH=/app/services/user-service/src \
+ENV PYTHONPATH=/app/libs/wine-logging/src:/app/services/user-service/src \
     WINE_USERS_HOST=0.0.0.0 \
     WINE_USERS_PORT=8000
 

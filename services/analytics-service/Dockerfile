@@ -10,8 +10,9 @@ WORKDIR /app
 COPY services/analytics-service/requirements.txt services/analytics-service/requirements.txt
 RUN pip install -r services/analytics-service/requirements.txt
 
+COPY libs/wine-logging/src libs/wine-logging/src
 COPY services/analytics-service/src services/analytics-service/src
-ENV PYTHONPATH=/app/services/analytics-service/src \
+ENV PYTHONPATH=/app/libs/wine-logging/src:/app/services/analytics-service/src \
     WINE_ANALYTICS_HOST=0.0.0.0 \
     WINE_ANALYTICS_PORT=8001
 

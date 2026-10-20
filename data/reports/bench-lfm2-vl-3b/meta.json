@@ -1,0 +1,13 @@
+{
+  "model": "LFM2-VL-3B",
+  "backend": "chat",
+  "photos": 100,
+  "load_s": 71.9,
+  "weights_gb": 5.6,
+  "peak_vram_gb": 5.97,
+  "median_ms": 1357,
+  "p95_ms": 2416,
+  "max_ms": 3966,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

@@ -7,11 +7,12 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -20,6 +21,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     create_engine,
+    false,
+    inspect,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
@@ -155,6 +159,150 @@ class Setting(Base):
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
 
+# ── Вовлечение (19.10): дневник, вопрос дня, челленджи, призы, подарки ──────
+
+
+class TastingNote(Base):
+    """Запись дневника дегустации: «попробовал» (оценка, вкус, заметка) или «хочу попробовать»."""
+
+    __tablename__ = "tasting_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    slug: Mapped[str] = mapped_column(String(255), index=True)
+    wine: Mapped[dict] = mapped_column(_Json)  # снимок карточки, как у скана
+    kind: Mapped[str] = mapped_column(String(8), default="tasted")  # tasted | want
+    rating: Mapped[int | None] = mapped_column(SmallInteger)  # 1–5
+    tags: Mapped[list] = mapped_column(_Json, default=list)  # «ягоды», «дуб» — что почувствовал
+    note: Mapped[str | None] = mapped_column(Text)
+    occasion: Mapped[str | None] = mapped_column(String(200))  # где, с кем, с чем
+    tasted_on: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class QuizQuestion(Base):
+    """Вопрос дня от админа. Без даты — в ротации; на день без вопроса — вопрос по бутылке из каталога."""
+
+    __tablename__ = "quiz_questions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    text: Mapped[str] = mapped_column(String(300))
+    options: Mapped[list] = mapped_column(_Json)  # 2–4 варианта
+    correct: Mapped[int] = mapped_column(SmallInteger)  # номер верного варианта, с 0
+    explanation: Mapped[str | None] = mapped_column(Text)
+    day: Mapped[date | None] = mapped_column(Date, unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class QuizAnswer(Base):
+    """Ответ на вопрос дня — один в день. Серия — дни с ответом подряд."""
+
+    __tablename__ = "quiz_answers"
+    __table_args__ = (UniqueConstraint("user_id", "day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    day: Mapped[date] = mapped_column(Date)
+    question: Mapped[str] = mapped_column(String(300))  # «q:12» или «auto:<slug>:<вид>»
+    choice: Mapped[int] = mapped_column(SmallInteger)
+    correct: Mapped[bool] = mapped_column(Boolean)
+    answered_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class PromoPool(Base):
+    """Приз: промокоды (список или один общий) и за что их выдавать."""
+
+    __tablename__ = "promo_pools"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(80))  # «Скидка 10% в ВинЛаб»
+    description: Mapped[str | None] = mapped_column(Text)  # условия: где и до какого числа действует
+    shared_code: Mapped[str | None] = mapped_column(String(64))  # один код на всех; иначе — список PromoCode
+    # За что выдавать сам по себе: серия вопроса дня из N дней | достижение | только за челленджи
+    trigger: Mapped[str] = mapped_column(String(16), default="challenge")  # quiz_streak | achievement | challenge
+    trigger_value: Mapped[int | None] = mapped_column(Integer)  # дней серии или id достижения
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+    __table_args__ = (UniqueConstraint("pool_id", "code"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    pool_id: Mapped[int] = mapped_column(ForeignKey("promo_pools.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(64))
+    issued: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+
+class PromoIssue(Base):
+    """Выданный приз. source — за что («pool:3», «challenge:5»): один приз за одно и то же — один раз."""
+
+    __tablename__ = "promo_issues"
+    __table_args__ = (UniqueConstraint("user_id", "source"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    pool_id: Mapped[int] = mapped_column(ForeignKey("promo_pools.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(64))
+    reason: Mapped[str] = mapped_column(String(200))  # «Серия вопроса дня: 7 дней»
+    issued_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class Challenge(Base):
+    """Челлендж с датами: «Октябрь — месяц Дона: 3 вина из Долины Дона»."""
+
+    __tablename__ = "challenges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str | None] = mapped_column(Text)
+    starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date] = mapped_column(Date)
+    kind: Mapped[str] = mapped_column(String(16))  # wines | diary | quiz
+    filter_field: Mapped[str | None] = mapped_column(String(16))  # region | grape | category | manufacturer
+    filter_value: Mapped[str | None] = mapped_column(String(120))
+    target: Mapped[int] = mapped_column(Integer, default=3)
+    reward_pool_id: Mapped[int | None] = mapped_column(ForeignKey("promo_pools.id", ondelete="SET NULL"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # прогресс считается с момента публикации (первого включения); галочка — засчитать и сделанное раньше
+    count_before: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    published_at: Mapped[datetime | None] = mapped_column()
+
+
+class TasteProfile(Base):
+    """«Мой вкус»: что человек сам отметил — цвета, сладость, сорта, винодельни (как выбор жанров в Spotify)."""
+
+    __tablename__ = "taste_profiles"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    colors: Mapped[list] = mapped_column(_Json, default=list)  # red | white | rose | orange | sparkling
+    sugars: Mapped[list] = mapped_column(_Json, default=list)  # dry | semidry | semisweet | sweet
+    grapes: Mapped[list] = mapped_column(_Json, default=list)
+    manufacturers: Mapped[list] = mapped_column(_Json, default=list)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class Gift(Base):
+    """Подарочная открытка: ссылка на вино с пожеланием. Открыть может любой, у кого есть ссылка."""
+
+    __tablename__ = "gifts"
+
+    token: Mapped[str] = mapped_column(String(24), primary_key=True)
+    sender_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    from_name: Mapped[str] = mapped_column(String(40))
+    slug: Mapped[str] = mapped_column(String(255))
+    wine: Mapped[dict] = mapped_column(_Json)
+    message: Mapped[str] = mapped_column(String(300))
+    opens: Mapped[int] = mapped_column(Integer, default=0)
+    saves: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
 class Database:
     def __init__(self, url: str) -> None:
         kwargs: dict = {"pool_pre_ping": True}
@@ -170,6 +318,24 @@ class Database:
 
     def create_schema(self) -> None:
         Base.metadata.create_all(self.engine)
+        self._add_new_columns()
+
+    def _add_new_columns(self) -> None:
+        """create_all не трогает существующие таблицы: новые столбцы (с server_default или NULL) добавляем сами."""
+        existing = inspect(self.engine)
+        with self.engine.begin() as conn:
+            for table in Base.metadata.sorted_tables:
+                have = {c["name"] for c in existing.get_columns(table.name)}
+                for column in table.columns:
+                    if column.name in have:
+                        continue
+                    kind = column.type.compile(dialect=self.engine.dialect)
+                    default = column.server_default.arg if column.server_default is not None else None
+                    sql = f"ALTER TABLE {table.name} ADD COLUMN {column.name} {kind}"
+                    if default is not None:
+                        sql += " DEFAULT " + str(default.compile(dialect=self.engine.dialect)
+                                                 if hasattr(default, "compile") else f"'{default}'")
+                    conn.execute(text(sql))
 
     def session(self) -> Iterator[Session]:
         with self._sessions() as session:

@@ -43,10 +43,10 @@ class Timings(BaseModel):
     """Разбивка времени ответа — нужна и для SLA, и для поиска узкого места."""
 
     decode_ms: float = Field(description="декодирование загруженного файла")
-    encode_ms: float = Field(description="инференс энкодера")
+    encode_ms: float = Field(description="инференс энкодера (сервис embedder)")
     search_ms: float = Field(description="поиск в Qdrant")
     vlm_ms: float = Field(default=0.0, description="выбор вина VLM и проверка выбранного")
-    total_ms: float
+    total_ms: float = Field(description="весь ответ api, включая сеть до моделей")
 
 
 class SearchResponse(BaseModel):
@@ -59,7 +59,7 @@ class SearchResponse(BaseModel):
         description="почему принято решение: confident (нашли), not_verified (проверка VLM: "
         "на фото другое вино), vlm_none (VLM: ни одна карточка не подходит), ambiguous "
         "(VLM колеблется между похожими винами), low_similarity (без VLM: фото мало похоже "
-        "на всё в каталоге), empty"
+        "на всё в каталоге), vlm_unavailable (vLLM не ответил — выдача по картинке), empty"
     )
     message: str = Field(default="", description="готовый текст для пользователя")
     top1: str | None = Field(
@@ -87,6 +87,7 @@ class SearchResponse(BaseModel):
         description="вероятность попарной проверки VLM, что топ-1 — вино с фото; "
         "null — VLM выключен или у топ-1 нет эталонного фото",
     )
+    degraded: bool = Field(default=False, description="VLM недоступен — ответ по одной картинке")
     timings: Timings
 
 
@@ -179,8 +180,8 @@ class ScanResponse(BaseModel):
     )
     top1_confident: bool
     reason: str = Field(
-        description="confident, not_verified, vlm_none, ambiguous, low_similarity, empty — "
-        "см. SearchResponse.reason"
+        description="confident, not_verified, vlm_none, ambiguous, low_similarity, "
+        "vlm_unavailable, empty — см. SearchResponse.reason"
     )
     message: str = Field(description="готовый текст для пользователя")
     top1: str | None = Field(
@@ -193,6 +194,7 @@ class ScanResponse(BaseModel):
         description="при not_found — топ-10 аналогов; при match — остальные из топ-10 "
         "для кнопки «Не то вино?»",
     )
+    degraded: bool = Field(default=False, description="VLM недоступен — варианты по одной картинке")
     timings: Timings
 
 
@@ -209,6 +211,24 @@ class RegionInfo(BaseModel):
     manufacturers: int = Field(description="виноделен")
     grapes: list[str] = Field(default_factory=list, description="главные сорта, по числу вин")
     image: str | None = Field(default=None, description="фото региона с сайта")
+
+
+class TasteGrape(BaseModel):
+    name: str
+    wines: int = Field(description="вин этого сорта в каталоге")
+    image: str | None = Field(default=None, description="фото сорта с сайта")
+
+
+class TasteMaker(BaseModel):
+    name: str
+    wines: int
+
+
+class TasteOptions(BaseModel):
+    """Варианты для экрана «Мой вкус»: сорта и винодельни каталога, самые частые — первыми."""
+
+    grapes: list[TasteGrape]
+    manufacturers: list[TasteMaker]
 
 
 class DishListItem(BaseModel):
@@ -232,17 +252,28 @@ class FeedbackResponse(BaseModel):
     ok: bool
 
 
+class ComponentHealth(BaseModel):
+    ok: bool
+    detail: str = ""
+
+
 class HealthResponse(BaseModel):
-    status: str
-    model_id: str
-    device: str
+    status: Literal["ok", "degraded"] = Field(
+        description="ok — всё работает; degraded — api жив, но недоступна зависимость "
+        "(модель, Qdrant): сканер отвечает 503 или по картинке, остальное работает"
+    )
     collection: str
-    indexed_points: int
-    vector_size: int
     vlm_enabled: bool
-    sommelier_wines: int = Field(default=0, description="вин в памяти сомелье")
+    components: dict[str, ComponentHealth] = Field(
+        description="qdrant, catalog (каталог в памяти), embedder, vlm"
+    )
     pairing_data: bool = Field(
         default=False,
         description="есть ли в индексе блюда и подача; false — нужен "
         "`python -m indexer --payload-only`",
     )
+
+
+class ReloadResponse(BaseModel):
+    wines: int
+    added: int

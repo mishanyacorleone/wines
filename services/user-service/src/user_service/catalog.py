@@ -8,12 +8,17 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Protocol
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 logger = logging.getLogger(__name__)
+
+# Регионы каталога перечитываются не чаще раза в 10 минут: синхронизация с сайтом
+# может добавить вино из нового региона без перезапуска сервисов
+_REGIONS_TTL_S = 600
 
 # Поля карточки, которые нужны истории и достижениям
 _FIELDS = ["slug", "title", "manufacturer", "region", "category", "grapes", "image_path", "source_url"]
@@ -27,6 +32,8 @@ class Catalog(Protocol):
     def get(self, slug: str) -> dict | None: ...
 
     def regions(self) -> list[str]: ...
+
+    def wines(self) -> list[dict]: ...
 
 
 def wine_snapshot(payload: dict) -> dict:
@@ -50,6 +57,9 @@ class QdrantCatalog:
         self._collection = collection
         self._cache: dict[str, dict | None] = {}
         self._regions: list[str] | None = None
+        self._regions_at = 0.0
+        self._wines: list[dict] | None = None
+        self._wines_at = 0.0
         self._lock = threading.Lock()
 
     def get(self, slug: str) -> dict | None:
@@ -74,7 +84,7 @@ class QdrantCatalog:
 
     def regions(self) -> list[str]:
         """Регионы каталога — подсказка админу для правила «вина из региона»."""
-        if self._regions is not None:
+        if self._regions is not None and time.monotonic() - self._regions_at < _REGIONS_TTL_S:
             return self._regions
         found: set[str] = set()
         offset = None
@@ -88,6 +98,27 @@ class QdrantCatalog:
                     break
         except Exception as exc:
             logger.warning("Регионы каталога недоступны: %s", exc)
-            return []
-        self._regions = sorted(found)
+            return self._regions or []
+        self._regions, self._regions_at = sorted(found), time.monotonic()
         return self._regions
+
+    def wines(self) -> list[dict]:
+        """Все вина каталога (снимки) — для вопросов дня по бутылке. Кэш на 10 минут."""
+        if self._wines is not None and time.monotonic() - self._wines_at < _REGIONS_TTL_S:
+            return self._wines
+        found: list[dict] = []
+        offset = None
+        try:
+            while True:
+                points, offset = self._client.scroll(
+                    self._collection, limit=500, offset=offset, with_payload=_FIELDS, with_vectors=False
+                )
+                found.extend(wine_snapshot(p.payload) for p in points if p.payload and p.payload.get("slug"))
+                if offset is None:
+                    break
+        except Exception as exc:
+            logger.warning("Вина каталога недоступны: %s", exc)
+            return self._wines or []
+        found.sort(key=lambda w: w["slug"])  # порядок не зависит от Qdrant: вопрос дня одинаков у всех
+        self._wines, self._wines_at = found, time.monotonic()
+        return self._wines

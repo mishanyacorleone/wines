@@ -1,6 +1,6 @@
 """Тесты сервиса аналитики на SQLite, без Postgres и сервиса пользователей.
 
-    PYTHONPATH=services/analytics-service/src .venv/bin/python -m pytest services/analytics-service/tests -q
+    PYTHONPATH=libs/wine-logging/src:services/analytics-service/src .venv/bin/python -m pytest services/analytics-service/tests -q
 """
 
 from __future__ import annotations
@@ -101,3 +101,86 @@ def test_mask_ip():
     assert mask_ip("95.165.12.40") == "95.165.12.x"
     assert mask_ip("2a00:1450:4010:c02::64") == "2a00:1450:4010::/48"
     assert mask_ip(None) == "неизвестно" and mask_ip("garbage") == "неизвестно"
+
+
+def test_export_xlsx(client):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    ev(client, "scan", props={"status": "match", "slug": "kuban-red", "title": "Пино Нуар", "region": "Кубань"})
+    ev(client, "scan", anon="anon-00000002", props={"status": "not_found"})
+    ev(client, "share", props={"channel": "telegram", "kind": "wine"})
+    res = client.get("/v1/admin/analytics/export.xlsx?days=7")
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/vnd.openxmlformats")
+    assert "attachment" in res.headers["content-disposition"]
+    wb = load_workbook(BytesIO(res.content))
+    assert wb.sheetnames == ["Сводка", "По дням", "Воронка", "Вина", "Регионы и производители",
+                             "Поделиться", "Вовлечение", "Точность распознавания", "Оценки",
+                             "Сети", "События"]
+    kpi = {row[0]: row[1] for row in wb["Сводка"].iter_rows(min_row=6, values_only=True)}
+    assert kpi["Сканов"] == 2 and kpi["Вино найдено"] == 1 and kpi["Поделились"] == 1
+    assert wb["Вина"]["A3"].value == "Пино Нуар"
+    assert wb["События"].max_row == 4  # заголовок + 3 события
+    client.state["admin"] = False
+    assert client.get("/v1/admin/analytics/export.xlsx").status_code == 403
+
+
+def test_engagement_and_registration_sources(client):
+    ev(client, "quiz", anon="anon-00000001", props={"correct": True})
+    ev(client, "quiz", anon="anon-00000002", props={"correct": False})
+    ev(client, "auth_prompt", anon="anon-00000001", props={"source": "quiz"})
+    ev(client, "register", anon="anon-00000001")
+    ev(client, "nudge_click", anon="anon-00000003", props={"place": "scan"})
+    ev(client, "auth_prompt", anon="anon-00000003", props={"source": "diary"})  # последний призыв — дневник
+    ev(client, "register", anon="anon-00000003")
+    ev(client, "register", anon="anon-00000004")  # сам, без призыва
+    ev(client, "auth_prompt", anon="anon-00000005", props={"source": "gift"})  # увидел, не зарегистрировался
+    ev(client, "share", anon="anon-00000001", props={"channel": "gift", "kind": "gift"})
+    ev(client, "gift_open", anon="anon-00000006")
+    ev(client, "gift_save", anon="anon-00000006")
+    ev(client, "diary", anon="anon-00000001", props={"kind": "tasted"})
+    ev(client, "prize", anon="anon-00000001", props={"count": 2})
+    g = client.get("/v1/admin/analytics?days=7").json()["engagement"]
+    assert g["quiz"] == {"answers": 2, "players": 2, "correct_share": 0.5}
+    assert g["gifts"] == {"created": 1, "opened": 1, "saved": 1} and g["prizes"] == 2
+    src = {s["source"]: s for s in g["registration_sources"]}
+    assert src["quiz"]["registrations"] == 1 and src["quiz"]["conversion"] == 1
+    assert src["diary"]["registrations"] == 1 and src["scan"]["registrations"] == 0
+    assert src["direct"]["registrations"] == 1 and src["gift"]["prompted"] == 1 and src["gift"]["conversion"] == 0
+
+
+def test_demo_has_engagement(client):
+    client.post("/v1/admin/analytics/demo?days=30")
+    g = client.get("/v1/admin/analytics?days=30").json()["engagement"]
+    assert g["quiz"]["answers"] > 0 and g["gifts"]["created"] > 0
+    assert {s["source"] for s in g["registration_sources"]} >= {"scan", "quiz"}
+
+
+def test_recognition_accuracy_and_ratings(client):
+    for _ in range(3):
+        ev(client, "scan", props={"status": "match", "slug": "a"})
+    ev(client, "scan", props={"status": "not_found"})
+    ev(client, "recognition", props={"answer": "confirmed", "status": "match"})
+    ev(client, "recognition", props={"answer": "confirmed", "status": "match"})
+    ev(client, "recognition", props={"answer": "picked_alternative", "status": "match"})
+    ev(client, "recognition", props={"answer": "none_match", "status": "not_found"})
+    ev(client, "diary", props={"kind": "tasted", "rating": 5})
+    ev(client, "diary", props={"kind": "want", "rating": None})
+    ev(client, "rate", props={"value": 1})
+    ev(client, "rate", props={"value": -1})
+    f = client.get("/v1/admin/analytics?days=7").json()["feedback"]
+    assert f["answered"] == 3 and f["accuracy"] == 0.667
+    week = f["weeks"][0]
+    assert week["scans"] == 4 and week["match"]["confirmed"] == 2 and week["match"]["picked"] == 1
+    assert week["not_found"] == {"scans": 1, "picked": 0, "missing": 1}
+    assert f["stars"][0] == {"stars": 5, "count": 1} and f["likes"] == 1 and f["dislikes"] == 1
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    book = load_workbook(BytesIO(client.get("/v1/admin/analytics/export.xlsx?days=7").content))
+    ws = book["Точность распознавания"]
+    assert ws["D5"].value == 2 and ws["G5"].value.startswith("=IF(C5>0")
+    assert book["Оценки"]["B3"].value == 1

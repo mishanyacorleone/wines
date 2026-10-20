@@ -1,0 +1,11 @@
+# Без torch: вектор нового вина считает сервис embedder
+fastapi==0.115.6
+uvicorn==0.34.0
+pydantic==2.10.4
+httpx==0.27.2
+qdrant-client==1.12.2
+numpy==2.1.3
+Pillow==11.0.0
+# парсер сайта (services/catalog-scraper) — полоса прогресса в CLI
+tqdm==4.67.1
+python-dotenv==1.2.3

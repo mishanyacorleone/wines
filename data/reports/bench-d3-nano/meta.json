@@ -1,0 +1,13 @@
+{
+  "model": "d3-nano",
+  "backend": "d3",
+  "photos": 100,
+  "load_s": 55.1,
+  "weights_gb": 4.12,
+  "peak_vram_gb": 5.5,
+  "median_ms": 1510,
+  "p95_ms": 1950,
+  "max_ms": 2216,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Смоук-тесты поднятого сервиса: контракт организатора, сканер, веб, скорость.
+# Смоук-тесты поднятого стека: контракт организатора, сканер, веб, аккаунт,
+# синхронизация каталога, логи, скорость.
 #
 #   ./infra/smoke.sh                           # сервис на http://127.0.0.1:8080
 #   ./infra/smoke.sh --queries ./eval/queries  # + каждое фото папки через /v1/eval/predict
 #   ./infra/smoke.sh --url http://host:8080 --samples 5
+#   ./infra/smoke.sh --wait 0                  # не ждать загрузки моделей
 #
 # Главная проверка — фото из каталога (data/catalog, его собирает парсер) должно
 # вернуть свой же slug. Нужно: bash, curl, jq. Код выхода 0 — всё прошло.
@@ -15,6 +17,7 @@ QDRANT="http://127.0.0.1:6333"
 SAMPLES=3
 QUERIES=""
 SLA_MS=3000
+WAIT_S=900  # embedder и vLLM грузят модели минуты — сразу после `up -d` они ещё «запускаются»
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -22,7 +25,8 @@ while [ "$#" -gt 0 ]; do
     --qdrant) QDRANT="${2%/}"; shift 2 ;;
     --samples) SAMPLES="$2"; shift 2 ;;
     --queries) QUERIES="$2"; shift 2 ;;
-    -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --wait) WAIT_S="$2"; shift 2 ;;
+    -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Неизвестный аргумент: $1 (см. --help)" >&2; exit 2 ;;
   esac
 done
@@ -65,13 +69,35 @@ predict_ok() {  # $1 — файл, $2 — подпись; печатает slug 
   return 0
 }
 
-section "Сервис $URL"
+# Ждём, пока api увидит все зависимости: иначе первые проверки упадут
+# только потому, что модели ещё в видеопамять не легли
+waited=0
+while [ "$waited" -lt "$WAIT_S" ]; do
+  read -r code ms < <(req "$URL/health")
+  if [ "$code" = 200 ] && jq -e '.components' "$BODY" >/dev/null 2>&1; then
+    down=$(jq -r '[.components | to_entries[] | select(.value.ok | not) | .key] | join(", ")' "$BODY")
+    [ -z "$down" ] && break
+    printf '\r  ...   жду: %s (%d с из %d)   ' "$down" "$waited" "$WAIT_S"
+  else
+    printf '\r  ...   жду api (%d с из %d)   ' "$waited" "$WAIT_S"
+  fi
+  sleep 10; waited=$((waited + 10))
+done
+[ "$waited" -gt 0 ] && printf '\n'
+
+section "Сервисы $URL"
+read -r code ms < <(req "$URL/gateway-health")
+[ "$code" = 200 ] && ok "шлюз отвечает" || skip "/gateway-health: HTTP $code — запуск без шлюза?"
 read -r code ms < <(req "$URL/health")
-if [ "$code" = 200 ] && jq -e '.status == "ok"' "$BODY" >/dev/null 2>&1; then
-  ok "/health: $(jq -r '"\(.indexed_points) вин в индексе, \(.device), VLM \(if .vlm_enabled then "вкл." else "выкл." end)"' "$BODY")"
-  points=$(jq -r '.indexed_points' "$BODY")
+if [ "$code" = 200 ] && jq -e '.components' "$BODY" >/dev/null 2>&1; then
+  # api жив; каждая зависимость — отдельной строкой: что именно не так, видно сразу
+  while IFS=$'\t' read -r name okv detail; do
+    [ "$okv" = true ] && ok "$name: $detail" || bad "$name: $detail (logs/$(date +%F)/all.log)"
+  done < <(jq -r '.components | to_entries[] | [.key, (.value.ok | tostring), .value.detail] | @tsv' "$BODY")
+  points=$(jq -r '.components.qdrant.detail' "$BODY" | grep -o '^[0-9]*')
+  points=${points:-0}
 else
-  bad "/health: HTTP $code — сервис не поднят (docker compose ps, docker compose logs api)"
+  bad "/health: HTTP $code — api не поднят (docker compose ps, logs/$(date +%F)/services/api.log)"
   printf '\nДальше проверять нечего.\n'; exit 1
 fi
 
@@ -230,6 +256,16 @@ read -r code ms < <(req "$URL/app/")
 if [ "$code" = 200 ] && grep -qi '<html' "$BODY"; then ok "/app/: страница сканера отдаётся"
 else bad "/app/: HTTP $code"; fi
 
+section "Каталог (синхронизация с сайтом)"
+read -r code ms < <(req "$URL/v1/admin/catalog/sync")
+case "$code" in
+  401|403) ok "/v1/admin/catalog/sync без входа администратора → HTTP $code" ;;
+  404|502|503) skip "/v1/admin/catalog/sync: HTTP $code — сервис каталога не подключён" ;;
+  *) bad "/v1/admin/catalog/sync без входа → HTTP $code (ожидался 401/403)" ;;
+esac
+read -r code ms < <(req "$URL/internal/catalog/reload")
+[ "$code" = 404 ] && ok "служебные /internal/ снаружи закрыты" || bad "/internal/ через шлюз → HTTP $code (ожидался 404)"
+
 section "Аккаунт (сервис пользователей)"
 JAR="$TMP/cookies"
 read -r code ms < <(req "$URL/v1/avatars")
@@ -259,6 +295,39 @@ else
         bad "/v1/me/regions: HTTP $code $(head -c 200 "$BODY")"
       fi
     fi
+    # Вовлечение: вопрос дня, дневник, челленджи, открытки (ответ и запись удалятся вместе с аккаунтом)
+    read -r code ms < <(req -b "$JAR" "$URL/v1/quiz/today")
+    if [ "$code" = 200 ] && jq -e '(.options | length) >= 2' "$BODY" >/dev/null 2>&1; then
+      ok "вопрос дня: $(jq -r '.text' "$BODY")"
+      read -r code ms < <(req -b "$JAR" -H 'Content-Type: application/json' -d '{"choice":0}' "$URL/v1/quiz/today/answer")
+      [ "$code" = 200 ] && jq -e '.saved and .streak >= 1' "$BODY" >/dev/null 2>&1 \
+        && ok "ответ на вопрос дня: серия $(jq -r '.streak' "$BODY")" || bad "ответ на вопрос дня: HTTP $code $(head -c 200 "$BODY")"
+    else
+      bad "/v1/quiz/today: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    if [ -n "${scan_slug:-}" ]; then
+      read -r code ms < <(req -b "$JAR" -H 'Content-Type: application/json' \
+        -d "{\"slug\":\"$scan_slug\",\"rating\":5,\"tags\":[\"Ягоды\"]}" "$URL/v1/me/diary")
+      [ "$code" = 201 ] && ok "дневник дегустации: запись «$(jq -r '.entry.wine.title' "$BODY")»" \
+                        || bad "дневник: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    # «Мой вкус» (A9): варианты — api, профиль и «понравится ли» — users
+    read -r code ms < <(req "$URL/v1/taste/options")
+    [ "$code" = 200 ] && jq -e '(.grapes | length) > 0' "$BODY" >/dev/null 2>&1 \
+      && ok "«Мой вкус»: сортов на выбор $(jq '.grapes | length' "$BODY")" || bad "/v1/taste/options: HTTP $code"
+    read -r code ms < <(req -b "$JAR" -X PUT -H 'Content-Type: application/json' \
+      -d '{"colors":["red"],"sugars":["dry"]}' "$URL/v1/me/taste")
+    [ "$code" = 200 ] && jq -e '.ready' "$BODY" >/dev/null 2>&1 && ok "«Мой вкус»: профиль сохранён" \
+      || bad "/v1/me/taste: HTTP $code $(head -c 200 "$BODY")"
+    if [ -n "${scan_slug:-}" ]; then
+      read -r code ms < <(req -b "$JAR" "$URL/v1/me/taste/match?slug=$scan_slug")
+      [ "$code" = 200 ] && ok "«понравится ли»: $(jq -r '.state' "$BODY")" \
+        || bad "/v1/me/taste/match: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    read -r code ms < <(req -b "$JAR" "$URL/v1/challenges")
+    [ "$code" = 200 ] && ok "челленджи: идёт $(jq length "$BODY")" || bad "/v1/challenges: HTTP $code"
+    read -r code ms < <(req "$URL/v1/gifts/smoke-nope")
+    [ "$code" = 404 ] && ok "открытки: неизвестная ссылка → 404" || bad "/v1/gifts: HTTP $code (маршрут шлюза?)"
     read -r code ms < <(req -b "$JAR" "$URL/v1/me")
     [ "$code" = 200 ] && ok "профиль: $(jq -r '"сканов \(.stats.scans), регионов \(.stats.regions), оценок \(.stats.ratings)"' "$BODY")" \
                       || bad "/v1/me: HTTP $code"
@@ -268,6 +337,14 @@ else
   else
     bad "регистрация: HTTP $code $(head -c 200 "$BODY") (docker compose logs users)"
   fi
+fi
+
+section "Логи"
+today="logs/$(date +%F)"
+if [ -f "$today/all.log" ]; then
+  ok "$today: all.log ($(wc -l < "$today/all.log") строк) и по сервисам: $(ls "$today/services" 2>/dev/null | sed 's/\.log$//' | tr '\n' ' ')"
+else
+  skip "нет $today/all.log — сборщик логов не запущен (docker compose up -d logs) или стек на другой машине"
 fi
 
 if [ -s "$TMP/latencies" ]; then

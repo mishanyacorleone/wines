@@ -19,7 +19,6 @@ def setup_model_cache(models_dir: Path) -> None:
     models_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("HF_HOME", str(models_dir))
     os.environ.setdefault("HUGGINGFACE_HUB_CACHE", str(models_dir / "hub"))
-    os.environ.setdefault("TRANSFORMERS_CACHE", str(models_dir / "hub"))
     os.environ.setdefault("TORCH_HOME", str(models_dir / "torch"))
 
 

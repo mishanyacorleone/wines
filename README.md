@@ -15,10 +15,11 @@
 | Конфигурация | top-1 (n=53) | «нет в каталоге» у вин вне каталога | p95 ответа | VRAM |
 |---|---|---|---|---|
 | только картинка (`WINE_VLM_ENABLED=0`) | 77,4% | порог по баллу: лучший разделяет 61 из 74 | 0,4 с | ~1,2 ГБ |
-| **картинка + VLM (топ-5) + проверка (по умолчанию)** | **96,2%** | **30 из 33**, верный скрыт у 5 из 62 | 1,6 с (max 1,6) | ~10,3 ГБ |
+| **картинка + VLM (топ-5) + проверка (по умолчанию)** | **96,2%** | **30 из 33**, верный скрыт у 5 из 62 | 1,6 с (max 1,6) | ~13,5 ГБ: vLLM ~12 + SigLIP ~1,5 |
 
 Точность — по ручной разметке 100 реальных фото (53 размечены уверенно, 33 —
-вина нет в каталоге). SLA организатора — 3 с. Все прогоны —
+вина нет в каталоге). SLA организатора — 3 с. VLM (Qwen3-VL-4B-FP8) работает в
+vLLM: та же точность, что у Qwen3-VL-4B в transformers. Все прогоны —
 [`data/reports/accuracy.xlsx`](data/reports/accuracy.xlsx).
 
 Архитектура и границы слоёв → [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -27,21 +28,24 @@
 
 ## Запуск для проверки (Docker)
 
-Всё работает в контейнерах: шлюз (nginx, порт 8080), API распознавания с
-веб-сканером, сервис пользователей (личный кабинет) с PostgreSQL, Qdrant,
-парсер каталога, индексатор. Модели и каталог скачиваются на вашей машине, индекс тоже строится
-у вас. Одна команда делает всё с нуля.
+Всё работает в контейнерах, каждый сервис отвечает за одно: шлюз (nginx, порт
+8080), страница сканера (web), API распознавания и каталога (api, без GPU), модели
+— SigLIP 2 (embedder) и Qwen3-VL (vllm), Qdrant, синхронизация каталога с сайтом
+(catalog), личный кабинет (users) и аналитика с PostgreSQL, сборщик логов. Упавший
+сервис отключает только свою функцию: без моделей сайт открывается, а сканер
+пишет «распознавание временно недоступно». Модели и каталог скачиваются на вашей
+машине, индекс тоже строится у вас. Одна команда делает всё с нуля.
 
 ### Что нужно на машине
 
 | | |
 |---|---|
 | ОС | Linux x86_64 (проверено на Ubuntu) |
-| GPU | NVIDIA, **от 12 ГБ видеопамяти** (сервис занимает ~10,3 ГБ, лимит в коде — 14 ГБ); проверено на RTX 3090 |
+| GPU | NVIDIA, **24 ГБ видеопамяти** (vLLM берёт 0,5 карты ≈ 12 ГБ, SigLIP ~1,5 ГБ); проверено на RTX 3090. Меньше — `WINE_VLM_ENABLED=0` (только картинка, top-1 77%) |
 | ПО | Docker с Compose v2 (`docker compose version`), [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), `bash`, `curl`, `jq`, `git` |
-| Диск | ~25 ГБ: веса моделей 13 ГБ, образы ~8 ГБ, фото каталога 1 ГБ |
-| Сеть | huggingface.co (веса), vino-svoe.ru (каталог), Docker Hub и PyPI (сборка образов) |
-| Порты | 8080 (шлюз: сервис и контракт оценки); на localhost — 6333 (Qdrant), 8090 (API напрямую), 5433 (PostgreSQL) |
+| Диск | ~45 ГБ: веса моделей 10 ГБ, образ vLLM ~23 ГБ, наши образы ~8 ГБ, фото каталога 1 ГБ |
+| Сеть | huggingface.co (веса), vino-svoe.ru (каталог и его синхронизация), Docker Hub и PyPI (образы) |
+| Порты | 8080 (шлюз: сервис и контракт оценки); на localhost — 6333 (Qdrant), 8090 (API напрямую), 8100 (vLLM), 5433 (PostgreSQL) |
 
 Проверить, что Docker видит GPU:
 
@@ -61,11 +65,11 @@ git clone <репозиторий> wines && cd wines
 
 | Шаг | Что происходит | Время |
 |---|---|---|
-| 1. Модели | `google/siglip2-so400m-patch16-512` (4,3 ГБ) и `Qwen/Qwen3-VL-4B-Instruct` (8,9 ГБ) → `models/`, с докачкой | зависит от канала |
-| 2. Образы | `docker compose --profile init build`: api, indexer, scraper | 5–15 минут |
+| 1. Модели | `google/siglip2-so400m-patch16-512` (4,3 ГБ) и `Qwen/Qwen3-VL-4B-Instruct-FP8` (5,7 ГБ) → `models/`, с докачкой | зависит от канала |
+| 2. Образы | `docker compose --profile init build` (api, embedder, catalog, users, analytics, logs, indexer, scraper) и `docker compose pull vllm` (~23 ГБ) | 10–30 минут |
 | 3. Каталог | парсер обходит vino-svoe.ru и сохраняет фото и карточки ~2100 вин в `data/catalog/`; пауза между запросами, чтобы не нагружать сайт | 35–40 минут |
 | 4. Индекс | эмбеддинги SigLIP 2 для всех фото каталога → Qdrant (коллекция `wines`, dim 1152, косинус) | ~4 минуты |
-| 5. Сервис | загрузка моделей в видеопамять, прогрев, кэш уменьшенных эталонов для VLM | 1–2 минуты |
+| 5. Сервисы | все контейнеры; vLLM грузит модель и компилирует ядра (кэш — `data/vllm-cache`) | до 6 минут в первый раз, ~1–2 потом |
 | 6. Смоук-тесты | `infra/smoke.sh`, см. ниже | ~20 секунд |
 
 В конце скрипт печатает адреса:
@@ -77,20 +81,25 @@ git clone <репозиторий> wines && cd wines
 Дальше сервис поднимается одной командой:
 
 ```bash
-docker compose up -d          # Qdrant + API; после перезагрузки машины стартуют сами
-docker compose ps             # оба сервиса должны быть healthy
-docker compose logs -f api    # лог сервиса
+docker compose up -d          # все сервисы; после перезагрузки машины стартуют сами
+docker compose ps             # healthy у gateway, web, api, embedder, vllm, qdrant, users, analytics, catalog
+tail -f logs/$(date +%F)/all.log   # что происходит: сканы, входы, ошибки, перезапуски
 docker compose down           # остановить
 ```
 
-Каталог на сайте пополняется. Чтобы подтянуть новые вина, запустите парсер
-ещё раз: он скачает только недостающее. Затем пересчитайте индекс:
+**Новые вина без перезапуска.** Каталог на сайте пополняется (до ~50 вин в день).
+Сервис `catalog` сверяет его с сайтом раз в сутки и по кнопке в админке:
+`/app/` → Профиль → Управление → «Каталог» → «Обновить каталог с сайта». Новые вина
+скачиваются, получают вектор и сразу появляются в поиске — ничего не
+перезапускается. Там же — расписание (вкл./выкл., «N раз в минуту / час / день / неделю / месяц») и история
+запусков. Если выход в интернет только через прокси на 127.0.0.1 — см. «Если что-то
+не так». Полная пересборка индекса по-прежнему — `docker compose run --rm indexer --recreate`.
 
-```bash
-docker compose run --rm scraper
-docker compose run --rm indexer --recreate
-docker compose restart api
-```
+**Логи** — в `logs/<дата>/`: `all.log` — важное по всем сервисам (сканы и их итог,
+входы, действия админа, синхронизация каталога, ошибки, медленные запросы, падения
+и перезапуски контейнеров), `services/<сервис>.log` — всё по одному сервису,
+`services/gateway.log` — каждый запрос к API. Номер в скобках (`[33319c71]`) — номер
+запроса: по нему видно, как один скан прошёл через шлюз, api, embedder и vLLM.
 
 ### Смоук-тесты
 
@@ -102,8 +111,8 @@ docker compose restart api
 
 Что проверяется:
 
-- `/health` отвечает, число вин в индексе совпадает с `data/catalog/catalog.jsonl`,
-  Qdrant в статусе `green`;
+- шлюз отвечает; `/health` api: Qdrant, каталог в памяти, embedder и vLLM — каждый
+  отдельной строкой; число вин в индексе совпадает с `data/catalog/catalog.jsonl`;
 - **контракт `/v1/eval/predict`**: ответ ровно `{"slug": "<строка>"}` или
   `{"slug": null}`, время ответа меньше 3 секунд. Фото из каталога должно вернуть
   свой же slug. В каталоге есть вина с одинаковым фото, для них подходит любой
@@ -111,7 +120,10 @@ docker compose restart api
 - не картинка → 4xx, сервис при этом не падает;
 - `/v1/search` (топ-1 + топ-10), `/v1/scan` (карточка + советы сомелье),
   `/v1/wines/{slug}`, `/v1/pairing/dishes`, `/v1/catalog/search`;
-- веб-сканер `/app/` отдаётся.
+- веб-сканер `/app/`, «Поделиться», регионы карты, аналитика, личный кабинет
+  (регистрация → скан → лайк → карта → удаление тестового аккаунта);
+- синхронизация каталога закрыта без входа админа, `/internal/` снаружи недоступен;
+- логи за сегодня пишутся.
 
 Скрипт возвращает код 0, если все проверки прошли; это удобно для CI.
 Пример вывода:
@@ -181,35 +193,41 @@ jq -r 'select(.predicted_slug == null) | .image_path' predictions.jsonl   # пу
 |---|---|
 | `failed to bind host port ... 6333` или `8080: address already in use` | Порт уже занят, например Qdrant или сервисом, запущенным без Docker. Найти процесс: `ss -ltnp \| grep -E ':6333\|:8080'`. Порт сервиса можно сменить: `WINE_API_PORT=8081 docker compose up -d` |
 | `could not select device driver "nvidia"` | Не установлен NVIDIA Container Toolkit или Docker не перезапущен после установки (`sudo systemctl restart docker`) |
-| API долго в статусе `starting` | При первом старте модели загружаются в видеопамять и строится кэш эталонов, это до 2 минут. Ход загрузки видно в `docker compose logs -f api` |
-| CUDA out of memory | На GPU работает что-то ещё. Сервису нужно ~10,3 ГБ. Без VLM ему хватает ~1,2 ГБ, но точность падает до 77% (`WINE_VLM_ENABLED=0` в `.env`, затем `docker compose up -d api`) |
-| В логе API при первом старте `Temporary failure in name resolution` | API стартовал раньше Qdrant. Он перезапустится сам (`restart: unless-stopped`) |
-| Выход в интернет только через прокси | Задайте `HTTP_PROXY`/`HTTPS_PROXY` и `no_proxy=127.0.0.1,localhost` в окружении перед `init.sh`. Эти переменные получают curl при скачивании весов и парсер (он работает в сети хоста). Для `pip install` при сборке образов прокси задаётся в `~/.docker/config.json` (раздел `proxies`, [документация Docker](https://docs.docker.com/engine/cli/proxy/)). API и индексатору интернет не нужен |
+| `vllm` долго в статусе `starting`, сканер пишет «упрощённый режим» | Первый старт vLLM — до 6 минут (веса, профилирование, CUDA graphs). Пока его нет, сканер отвечает по одной картинке. Ход — `logs/<дата>/services/vllm.log` |
+| Сканер: «Распознавание временно недоступно» | Не отвечает embedder или Qdrant: `docker compose ps`, строка `… недоступен` в `logs/<дата>/all.log` |
+| CUDA out of memory | На GPU работает что-то ещё. vLLM нужно ~12 ГБ, SigLIP ~1,5 ГБ. Без VLM — только SigLIP, но точность падает до 77% (`WINE_VLM_ENABLED=0` в `.env`, `docker compose up -d api` и `docker compose stop vllm`) |
+| Выход в интернет только через прокси | Задайте `HTTP_PROXY`/`HTTPS_PROXY` и `no_proxy=127.0.0.1,localhost` в окружении перед `init.sh`. Эти переменные получают curl при скачивании весов и парсер (он работает в сети хоста). Для `pip install` при сборке образов прокси задаётся в `~/.docker/config.json` (раздел `proxies`, [документация Docker](https://docs.docker.com/engine/cli/proxy/)). Синхронизации каталога (сервис catalog) — `WINE_SYNC_PROXY` в `.env`; если прокси слушает только 127.0.0.1 хоста, из контейнера его не видно — включите ретранслятор: `COMPOSE_PROFILES=proxy`, `WINE_SYNC_PROXY=http://host.docker.internal:7115`, `WINE_EGRESS_TARGET=127.0.0.1:<порт прокси>`. Остальным сервисам интернет не нужен |
+| Синхронизация каталога: «сайт vino-svoe.ru недоступен» | Нет выхода в интернет из контейнера catalog — см. строку выше про прокси |
 | Парсер: «Ошибок: 2097», в `data/catalog/failures.jsonl` — `CERTIFICATE_VERIFY_FAILED` или `ConnectError`; `init.sh` останавливается с «каталог пуст» | Контейнер парсера пошёл в интернет напрямую, а сеть пускает наружу только через прокси (или подменяет сертификаты при прямом выходе). Задайте прокси в окружении — `HTTP_PROXY`/`HTTPS_PROXY` или строчные `http_proxy`/`https_proxy` — и запустите `./infra/init.sh` снова; проверить, что compose его видит: `docker compose --profile init config scraper \| grep PROXY` |
-| Смоук-тест: «в индексе N точек, в каталоге M вин» | Каталог дополнили, а индекс не пересчитали: `docker compose run --rm indexer --recreate`, затем `docker compose restart api` |
+| Смоук-тест: «в индексе N точек, в каталоге M вин» | Каталог дополнили, а в индекс не добавили: «Обновить каталог с сайта» в админке (добавит недостающие) или `docker compose run --rm indexer --recreate` |
 
 Все настройки задаются в `.env` (создаётся из `.env.example` при первом запуске),
-полный список — в разделе «Переменные окружения». В контейнере адрес Qdrant
+полный список — в разделе «Переменные окружения». В контейнерах адреса сервисов
 и прослушивание `0.0.0.0` задаёт compose, `.env` их не перекрывает.
 
 ## Структура
 
 ```
-libs/wine-embeddings/       общий энкодер (SigLIP 2): модель, нормализация, лимит VRAM
-services/catalog-scraper/   сбор каталога с vino-svoe.ru → data/catalog/
-services/indexer/           каталог → векторы → Qdrant
-services/search-api/        FastAPI: /v1/eval/predict (контракт организатора), /v1/scan и /app/
-                            (сканер + сомелье), /v1/search (топ-10 для анализа)
+libs/wine-embeddings/       общий энкодер (SigLIP 2): модель, нормализация, лимит VRAM — embedder и indexer
+libs/wine-logging/          единый формат логов Python-сервисов, номер запроса
+services/web/               nginx: страница сканера (app/ — HTML, JS, CSS) и фото бутылок
+services/search-api/        api (без GPU): /v1/eval/predict (контракт организатора), /v1/scan (сканер +
+                            сомелье), /v1/search (топ-10 для анализа), карточки, блюда, регионы
+services/embedder/          модель SigLIP 2: фото → вектор (GPU)
+services/catalog-service/   синхронизация каталога с сайтом по кнопке и расписанию
+services/catalog-scraper/   сбор каталога с vino-svoe.ru → data/catalog/ (первый запуск)
+services/indexer/           каталог → векторы → Qdrant (первый запуск, полная переиндексация)
 services/user-service/      FastAPI + PostgreSQL: аккаунт, профиль, история сканов, оценки, достижения
 services/analytics-service/ FastAPI + PostgreSQL: события веб-сканера и дашборд для РСХБ
-tools/eval-runner/          прогон фото через API → HTML-отчёт, точность, Excel
+services/log-collector/     сборщик логов: stdout контейнеров → logs/<дата>/
+tools/eval-runner/          прогон фото через API → HTML-отчёт, точность, Excel, нагрузка (RPS)
 tools/web-demo/             демо-ответы API для вёрстки без GPU
 tools/site-media/           фото блюд, регионов и сортов с сайта для карточки
-tools/region-map/           контуры субъектов РФ для винной карты (Natural Earth → web/russia-map*.json)
+tools/region-map/           контуры субъектов РФ для винной карты (Natural Earth → services/web/app/russia-map*.json)
 infra/                      init.sh (первый запуск), smoke.sh (смоук-тесты), загрузка весов,
-                            run-qdrant.sh (Qdrant без Docker)
-docker-compose.yml          gateway + api + users + analytics + qdrant + postgres; scraper, indexer — профиль init
-infra/gateway/nginx.conf    маршруты шлюза: какой путь в какой сервис
+                            run-qdrant.sh (Qdrant без Docker), egress/ (ретранслятор к прокси хоста)
+docker-compose.yml          все сервисы; scraper, indexer — профиль init; egress — профиль proxy
+infra/gateway/nginx.conf    маршруты шлюза: какой путь в какой сервис, ответы за упавший сервис
 services/*/Dockerfile       образ на сервис, только его зависимости
 docs/                       данные, парсер, результаты, план, журнал изменений;
                             docs/history/ — исходный план и этапы, которые уже не актуальны
@@ -223,8 +241,10 @@ data/                       ТЗ, датасет организатора, ра�
 | Что | Размер | Как получить |
 |---|---|---|
 | `models/siglip2-so400m-patch16-512` | 4,3 ГБ | `./infra/fetch-model.sh google/siglip2-so400m-patch16-512` |
-| `models/Qwen3-VL-4B-Instruct` | 8,9 ГБ | `./infra/fetch-vlm.sh` |
-| `data/catalog/vlm-refs-*/` | ~0,1 ГБ | уменьшенные эталоны для VLM — сервис строит сам при старте |
+| `models/Qwen3-VL-4B-Instruct-FP8` | 5,7 ГБ | `./infra/fetch-vlm.sh` |
+| `data/catalog/vlm-refs-*/` | ~0,1 ГБ | уменьшенные эталоны для VLM — api строит сам при старте и после новых вин |
+| `data/catalog/sync-state.json` | — | расписание и история синхронизации каталога — создаёт сервис catalog |
+| `logs/` | — | логи по дням — пишет сборщик логов |
 | `infra/bin/qdrant` | 86 МБ | бинарник Qdrant 1.19.1, см. ниже |
 | `data/catalog/images/` | ~1 ГБ | парсер каталога (шаг 2 запуска), `catalog.jsonl` уже в репозитории |
 | `data/Датасет (1)/Реальные фото.zip`, `data/real-photos/` | 94 МБ | архив организатора; распаковать в `data/real-photos/` |
@@ -233,10 +253,11 @@ data/                       ТЗ, датасет организатора, ра�
 
 ## Разработка без Docker
 
-То же самое можно запустить из виртуального окружения. Так удобнее
-отлаживать код и гонять оценку. Перед этим остановите контейнеры
-(`docker compose down`): они занимают те же порты 6333 и 8080. Хранилище
-Qdrant (`data/qdrant/storage`) у обоих способов общее.
+Сервисы можно запустить из виртуального окружения — так удобнее отлаживать код
+и гонять оценку. Контейнеры занимают порты 6333 и 8080 — либо остановите их
+(`docker compose down`), либо запускайте свои копии на других портах. Хранилище
+Qdrant (`data/qdrant/storage`) у обоих способов общее; VLM — контейнер `vllm`
+(`docker compose up -d vllm`, порт 127.0.0.1:8100).
 
 ### Сетап
 
@@ -245,6 +266,7 @@ Python 3.12, CUDA-GPU (проверено на RTX 3090; процессу отв
 ```bash
 python3.12 -m venv .venv
 .venv/bin/pip install -r services/search-api/requirements.txt \
+                      -r services/embedder/requirements.txt \
                       -r services/indexer/requirements.txt \
                       -r services/catalog-scraper/requirements.txt \
                       -r tools/eval-runner/requirements.txt
@@ -262,9 +284,8 @@ cp .env.example .env              # и поправить под себя
 Веса скачиваются в папку проекта, а не в `~/.cache`, через curl с докачкой:
 штатный загрузчик HuggingFace на обрывах начинает файл заново.
 
-`requirements.txt` сервиса поиска закрепляет `torchvision==0.23.0` (нужен
-процессору Qwen3-VL): свежий torchvision поднимает torch до версии с CUDA 13
-и ломает стек.
+torch закреплён на 2.8.0 (`libs/wine-embeddings/requirements.txt`): свежий
+torchvision поднимает torch до версии с CUDA 13 и ломает стек.
 
 ### Запуск
 
@@ -282,10 +303,17 @@ PYTHONPATH=libs/wine-embeddings/src:services/indexer/src .venv/bin/python -m ind
 #     Нужен один раз для индекса, построенного до появления сомелье
 PYTHONPATH=libs/wine-embeddings/src:services/indexer/src .venv/bin/python -m indexer --payload-only
 
-# 4. Сервис (читает .env)
-PYTHONPATH=libs/wine-embeddings/src:services/search-api/src .venv/bin/python -m search_api
+# 4. Модели: SigLIP (embedder, :8091) и VLM (контейнер vllm, :8100)
+PYTHONPATH=libs/wine-embeddings/src:libs/wine-logging/src:services/embedder/src .venv/bin/python -m embedder
+docker compose up -d vllm
+
+# 5. api (читает .env; адреса моделей — WINE_EMBEDDER_URL, WINE_VLLM_URL)
+WINE_VLLM_MEDIA_DIR=/app/data/catalog PYTHONPATH=libs/wine-logging/src:services/search-api/src \
+  .venv/bin/python -m search_api
 ```
 
+Страницу сканера без Docker отдаёт любой статический сервер из `services/web/app`,
+но API должен быть на том же адресе — проще смотреть её через Docker-шлюз.
 Мобильный сканер — `http://<хост>:8080/app/` (корень `/` перенаправляет туда).
 Кнопка «Сфотографировать этикетку»:
 
@@ -304,14 +332,14 @@ PYTHONPATH=libs/wine-embeddings/src:services/search-api/src .venv/bin/python -m 
 
 ```bash
 python tools/web-demo/build_demo.py          # пересобрать demo/ из catalog.jsonl
-python -m http.server 8765 --directory services/search-api/src/search_api/web
+python -m http.server 8765 --directory services/web/app
 # http://localhost:8765/?demo=match&autorun=1  и  ?demo=not_found&autorun=1
 ```
 
 Проверка:
 
 ```bash
-curl --noproxy '*' http://127.0.0.1:8080/health
+curl --noproxy '*' http://127.0.0.1:8080/health                                          # api и его зависимости
 curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/search' -F image=@photo.jpg          # top1 + топ-10 + status
 curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/eval/predict' -F image=@photo.jpg   # {"slug": "..."} или {"slug": null}
 curl --noproxy '*' -X POST 'http://127.0.0.1:8080/v1/scan' -F image=@photo.jpg          # карточка + сомелье
@@ -346,7 +374,7 @@ curl --noproxy '*' 'http://127.0.0.1:8080/v1/pairing?dish=Сыры&style=red'
 — это подгонка, а не независимый замер.
 
 Фото блюд, регионов и сортов, как на сайте, берутся из
-`search_api/site_media.json`; пересобрать его после пополнения каталога —
+`services/search-api/src/search_api/site_media.json`; пересобрать его после пополнения каталога —
 `python tools/site-media/fetch_site_media.py` (обходит ~110 страниц вин с паузой).
 
 **Цифровой сомелье** (`search_api/sommelier.py`) — правила по полям каталога,
@@ -379,14 +407,18 @@ docker compose logs users | grep -i пароль
 `http://localhost:8080/docs` — документация API распознавания; у сервиса
 пользователей она своя, внутри сети compose (`users:8000/docs`).
 
-Тесты сервиса (SQLite в памяти, без Postgres и Qdrant):
+Тесты сервисов (SQLite и Qdrant в памяти, без Postgres, сайта и моделей):
 
 ```bash
-.venv/bin/pip install -r services/user-service/requirements.txt pytest
-PYTHONPATH=services/user-service/src .venv/bin/python -m pytest services/user-service/tests -q
+.venv/bin/pip install -r services/user-service/requirements.txt -r services/catalog-service/requirements.txt pytest
+PYTHONPATH=libs/wine-logging/src:services/user-service/src .venv/bin/python -m pytest services/user-service/tests -q
+PYTHONPATH=libs/wine-logging/src:services/analytics-service/src .venv/bin/python -m pytest services/analytics-service/tests -q
+PYTHONPATH=libs/wine-logging/src:services/catalog-scraper/src:services/indexer/src:services/catalog-service/src \
+  .venv/bin/python -m pytest services/catalog-service/tests -q
+PYTHONPATH=services/log-collector/src .venv/bin/python -m pytest services/log-collector/tests -q
 ```
 
-Без Docker (API запущен напрямую) кабинета нет: сканер работает как раньше,
+Если сервис пользователей недоступен, кабинета нет: сканер работает как раньше,
 кнопка профиля не показывается.
 
 **Поделиться** — у карточки вина, полученного достижения (и в поздравлении) и на
@@ -404,7 +436,6 @@ PYTHONPATH=services/user-service/src .venv/bin/python -m pytest services/user-se
 конверсия в аккаунт, воронка регистрации, топ вин, регионов и виноделен, шары,
 винная карта, сети провайдеров. На стенде все запросы с одного адреса — для показа
 есть «Сгенерировать демо-данные» (помечены, удаляются одной кнопкой).
-Тесты сервиса: `PYTHONPATH=services/analytics-service/src .venv/bin/python -m pytest services/analytics-service/tests -q`.
 
 **Винная карта России** (`/app/#map`, вход — с главной сканера, из меню и профиля):
 интерактивная карта всех субъектов РФ (колесо или щипок — масштаб, перетаскивание —
@@ -436,32 +467,43 @@ PYTHONPATH=tools/eval-runner/src .venv/bin/python -m eval_runner.excel
 # Импорт новой разметки из Label Studio (CSV-экспорт)
 PYTHONPATH=tools/eval-runner/src .venv/bin/python -m eval_runner.labels data/project-...csv
 
-# VLM на готовом прогоне (только картинка, --top-k ≥ 10), без сервиса
-PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/src \
-  .venv/bin/python -m eval_runner.vlm_offline data/reports/image-top20/results.jsonl \
-  --out data/reports/vlm/results.jsonl --top-k 10 --candidate-images --verify \
-  --query-max-pixels 524288 --candidate-max-pixels 131072
+# Другая модель на месте VLM на тех же топ-5 (сравнение моделей, docs/baseline-results.md)
+PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-logging/src:libs/wine-embeddings/src \
+  .venv/bin/python -m eval_runner.model_bench vllm models/Qwen3-VL-4B-Instruct-FP8 \
+  --out data/reports/bench-vllm-qwen3-vl-4b-fp8/results.jsonl
+
+# Сколько сканов в секунду выдерживает стек (1, 2, 4, 8 пользователей одновременно)
+NO_PROXY=127.0.0.1 PYTHONPATH=tools/eval-runner/src .venv/bin/python -m eval_runner.load_test --label after
 ```
 
 ## Переменные окружения
 
-Сервис и индексатор при запуске читают `.env` из корня; переменные, уже
-заданные в окружении, имеют приоритет. Шаблон — [`.env.example`](.env.example).
+docker compose подставляет `.env` из корня во все сервисы; при нативном запуске
+сервисы читают его сами. Переменные, уже заданные в окружении, имеют приоритет.
+Шаблон — [`.env.example`](.env.example).
 
 | Переменная | По умолчанию | Назначение |
 |---|---|---|
 | `WINE_MODEL_ID` | `google/siglip2-so400m-patch16-512` | модель-энкодер; при наличии одноимённой папки в `models/` веса берутся с диска. После смены — переиндексация |
 | `WINE_MODELS_DIR` | `./models` | куда складывать веса |
 | `WINE_DEVICE` / `WINE_DTYPE` | `cuda` / `float16` | устройство и точность энкодера |
-| `WINE_VRAM_LIMIT_GB` | `14` | жёсткий потолок видеопамяти процесса (общий для всех моделей API) |
+| `WINE_VRAM_LIMIT_GB` | `14` | жёсткий потолок видеопамяти процесса с SigLIP (индексатор); у embedder в compose — `WINE_EMBEDDER_VRAM_LIMIT_GB` (`2.5`) |
 | `WINE_BATCH_SIZE` | `32` | батч при индексации |
 | `WINE_QDRANT_URL` | `http://localhost:6333` | адрес Qdrant |
 | `WINE_COLLECTION` | `wines` | имя коллекции |
+| `WINE_QDRANT_TIMEOUT_S` | `60` | таймаут запросов API к Qdrant (api читает все карточки в память) |
+| `WINE_EMBEDDER_URL` | `http://127.0.0.1:8091` | адрес embedder (в compose — `http://embedder:8091`) |
+| `WINE_CONNECT_TIMEOUT_S` / `WINE_EMBEDDER_TIMEOUT_S` | `2` / `15` | таймауты к моделям: упавший сервис — быстрый отказ, а не ожидание |
+| `WINE_UNAVAILABLE_COOLDOWN_S` | `10` | после сбоя модели не вызывать её столько секунд — запросы сразу получают отказ |
+| `WINE_CATALOG_REFRESH_S` | `60` | как часто api сверяет каталог в памяти с Qdrant (новые вина без перезапуска) |
 | `WINE_CATALOG_DIR` | `./data/catalog` | каталог: индексатор берёт оттуда фото, VLM — эталонные фото кандидатов |
 | `WINE_API_HOST` / `WINE_API_PORT` | `127.0.0.1` / `8080` | адрес сервиса (8080 — порт из скрипта оценки); `0.0.0.0` — доступ с телефона |
 | `WINE_TOP_K` | `10` | сколько вин отдают `/v1/search` и `/v1/scan` |
-| `WINE_VLM_ENABLED` | `1` | VLM (Qwen3-VL-4B): выбор вина и проверка «нет в каталоге»; `0` — только картинка |
-| `WINE_VLM_MODEL_DIR` | `./models/Qwen3-VL-4B-Instruct` | веса VLM |
+| `WINE_VLM_ENABLED` | `1` | VLM (Qwen3-VL-4B-FP8 в vLLM): выбор вина и проверка «нет в каталоге»; `0` — только картинка |
+| `WINE_VLLM_URL` | `http://127.0.0.1:8100` | адрес vLLM (в compose — `http://vllm:8000`) |
+| `WINE_VLLM_MEDIA_DIR` | — | каталог так, как его видит vLLM (в compose — `/app/data/catalog`): эталоны уходят путями, а не base64 |
+| `WINE_VLLM_SERVED_MODEL` / `WINE_VLLM_TIMEOUT_S` | `vlm` / `30` | имя модели в vLLM, таймаут запроса |
+| `WINE_VLLM_MODEL` / `WINE_VLLM_GPU_UTIL` / `WINE_VLLM_PORT` | `Qwen3-VL-4B-Instruct-FP8` / `0.5` / `8100` | compose-сервис `vllm`: папка весов в `models/`, доля памяти всей карты, порт на localhost |
 | `WINE_VLM_TOP_K` | `5` | из скольких кандидатов выбирает VLM (1–9, метки — цифры); из 10 — медленнее и на 2 фото хуже |
 | `WINE_VLM_CANDIDATE_IMAGES` | `1` | показывать VLM эталонные фото кандидатов, а не только текст карточек |
 | `WINE_VLM_QUERY_MAX_PIXELS` | `524288` | площадь, до которой уменьшается фото пользователя для VLM |
@@ -472,7 +514,6 @@ PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/sr
 | `WINE_PREDICT_EMPTY_IF_ABSENT` | `0` | `0` — `/v1/eval/predict` и `top1` всегда отдают вино, выбранное VLM (все фото проверки есть в каталоге); `1` — вина нет в каталоге → `{"slug": null}` и `top1: null`. Веб-сканер пишет «нет в каталоге» при любом значении |
 | `WINE_ACCEPT_MIN_IMAGE_SCORE` | `0.76` | без VLM: балл картинки ниже — «нет в каталоге» |
 | `WINE_ACCEPT_MIN_MARGIN` | `0.02` | без VLM: минимальный отрыв топ-1 от топ-2 |
-| `WINE_WEB_ENABLED` | `1` | мобильный сканер на `/app/` |
 | `WINE_FEEDBACK_DIR` | `./data/feedback` | куда писать отклики пользователей |
 | `WINE_SITE_IMAGE_API` | ресайз-API vino-svoe.ru | фото бутылки, если нет локального PNG каталога |
 | `WINE_ADMIN_LOGIN` / `WINE_ADMIN_PASSWORD` | `admin@vino-svoe.local` / — | администратор достижений; пароль из окружения применяется при каждом старте, без него генерируется один раз и пишется в лог |
@@ -482,7 +523,13 @@ PYTHONPATH=tools/eval-runner/src:services/search-api/src:libs/wine-embeddings/sr
 | `WINE_USERS_SESSION_DAYS` | `30` | срок сессии |
 | `WINE_USERS_COOKIE_SECURE` | `0` | `1` — cookie сессии только по https |
 | `WINE_API_DIRECT_PORT` / `WINE_PG_PORT` | `8090` / `5433` | порты на localhost для отладки: API в обход шлюза, PostgreSQL |
-| `SCRAPER_*` | см. `services/catalog-scraper/README.md` | параметры сбора каталога |
+| `WINE_CATALOG_SYNC_AUTO` / `WINE_CATALOG_SYNC_TIMES` / `WINE_CATALOG_SYNC_PER` | `1` / `1` / `day` | расписание синхронизации каталога по умолчанию — «N раз в minute / hour / day / week / month» (не чаще раза в минуту); дальше его меняет админ в «Каталог» |
+| `WINE_SYNC_PROXY` | — | прокси для синхронизации каталога (сервис catalog) |
+| `WINE_EGRESS_LISTEN` / `WINE_EGRESS_TARGET` | `172.17.0.1:7115` / `127.0.0.1:3128` | ретранслятор к прокси хоста (профиль `proxy`) |
+| `WINE_LOG_LEVEL` | `INFO` | уровень логов Python-сервисов (`DEBUG` — подробнее) |
+| `WINE_LOG_REQUESTS` | `0` | `1` — писать в лог сервиса каждый HTTP-запрос, а не только ошибки и медленные |
+| `WINE_LOGS_KEEP_DAYS` | `30` | сколько дней хранить `logs/<дата>/` |
+| `SCRAPER_*` | см. `services/catalog-scraper/README.md` | параметры сбора каталога (и синхронизации) |
 
 OCR (EasyOCR) из пайплайна удалён 28.09.2026: с VLM он не давал прироста
 точности, а стоил 0,35 с и 2 ГБ VRAM.
@@ -513,5 +560,11 @@ OCR (EasyOCR) из пайплайна удалён 28.09.2026: с VLM он не 
   для отладки есть запасной путь без Docker: нативный Qdrant
   (`infra/run-qdrant.sh`) той же версии и с тем же хранилищем. Стек в Docker
   проверен 28.09: 100 реальных фото дали те же ответы, что и без Docker.
+- **Без GPU** VLM не работает: vLLM требует видеокарту. На CPU — только картинка
+  (`WINE_DEVICE=cpu` для embedder, `WINE_VLM_ENABLED=0`, `docker compose stop vllm`):
+  top-1 77%, вектор ~1–7 с в зависимости от процессора.
+- **Сборщику логов нужен сокет Docker** (`/var/run/docker.sock`, только чтение логов
+  и событий) — это доступ к Docker хоста; на общих серверах его стоит заменить на
+  драйвер логов Docker или Fluent Bit с тем же разбором строк.
 - **Трафик идёт через прокси**, который рвёт длинные соединения: веса скачиваются
   скриптами с докачкой, а localhost исключается из проксирования в рантайме.

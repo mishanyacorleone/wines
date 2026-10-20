@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import httpx
 from tqdm.asyncio import tqdm_asyncio
@@ -26,6 +26,9 @@ class ScrapeStats:
     scraped: int = 0
     skipped: int = 0
     failed: int = 0
+    # slug всех вин sitemap и что не удалось собрать — для отчёта синхронизации
+    slugs: list[str] = field(default_factory=list)
+    failures: list[Failure] = field(default_factory=list)
 
 
 def slug_from_url(url: str) -> str:
@@ -75,13 +78,16 @@ async def scrape_catalog(
     limit: int | None = None,
     resume: bool = True,
     refresh_sitemap: bool = False,
+    progress: bool = True,
 ) -> ScrapeStats:
+    """progress=False — без полосы прогресса: в сервисе каталога она только засоряет лог."""
     stats = ScrapeStats()
     settings.output_dir.mkdir(parents=True, exist_ok=True)
 
     async with build_client(settings) as client:
         urls = await load_wine_urls(client, settings, use_cache=not refresh_sitemap)
         stats.total = len(urls)
+        stats.slugs = [slug_from_url(u) for u in urls]
         logger.info("В sitemap %d вин", len(urls))
 
         done: set[str] = compact_catalog(settings.catalog_path, settings.images_dir) if resume else set()
@@ -114,10 +120,11 @@ async def scrape_catalog(
                     else:
                         write_failure(failures, result)
                         stats.failed += 1
+                        stats.failures.append(result)
                         logger.debug("Не вышло %s: %s", result.slug, result.reason)
 
             await tqdm_asyncio.gather(
-                *(worker(url) for url in pending), desc="Каталог vino-svoe.ru"
+                *(worker(url) for url in pending), desc="Каталог vino-svoe.ru", disable=not progress
             )
 
     return stats

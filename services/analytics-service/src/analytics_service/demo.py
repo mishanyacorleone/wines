@@ -80,21 +80,63 @@ def generate(session: Session, wines: list[dict], days: int = 30, seed: int | No
                     wine = rnd.choices(wines, weights=weights)[0]
                     add(t, "scan", visitor, status="match", slug=wine["slug"], title=wine.get("title"),
                         region=wine.get("region"), manufacturer=wine.get("manufacturer"), ms=rnd.randint(1300, 2700))
+                    if rnd.random() < 0.3:  # «Это ваше вино?» — отвечает меньшинство; точность ~96%, как на замере
+                        add(t + timedelta(seconds=15), "recognition", visitor, status="match",
+                            answer=rnd.choices(["confirmed", "picked_alternative", "none_match"], weights=[96, 3, 1])[0])
                     if rnd.random() < 0.09:
                         add(t + timedelta(seconds=40), "share", visitor,
                             kind=rnd.choices(["wine", "achievement", "map"], weights=[70, 20, 10])[0],
                             channel=rnd.choices(["native", "tg", "vk", "save"], weights=[40, 30, 15, 15])[0])
                 else:
                     add(t, "scan", visitor, status="not_found", ms=rnd.randint(1300, 2900))
-            # без аккаунта — предложение войти, часть регистрируется
+                    if rnd.random() < 0.15:
+                        add(t + timedelta(seconds=25), "recognition", visitor, status="not_found",
+                            answer=rnd.choices(["none_match", "picked_alternative"], weights=[80, 20])[0])
+            # вовлечение: вопрос дня, дневник, открытки — до регистрации, чтобы был виден её источник
+            if rnd.random() < 0.35:
+                add(ts + timedelta(seconds=30), "quiz", visitor, correct=rnd.random() < 0.62)
+            if visitor.get("user") and rnd.random() < 0.18:
+                kind = rnd.choices(["tasted", "want"], weights=[75, 25])[0]
+                add(ts + timedelta(minutes=3), "diary", visitor, kind=kind,
+                    rating=rnd.choices([5, 4, 3, 2, 1], weights=[30, 38, 18, 9, 5])[0] if kind == "tasted" else None)
+            if visitor.get("user") and rnd.random() < 0.12:
+                add(ts + timedelta(minutes=7), "rate", visitor, value=rnd.choices([1, -1], weights=[78, 22])[0])
+            if rnd.random() < 0.04:
+                add(ts + timedelta(minutes=4), "share", visitor, kind="gift", channel="gift")
+                friend = {"anon": str(uuid.uuid4()), "ip": f"{rnd.choice(_NETWORKS)}.{rnd.randint(2, 254)}"}
+                opened = ts + timedelta(hours=rnd.randint(1, 20))
+                if opened < now and rnd.random() < 0.8:
+                    add(opened, "gift_open", friend)
+                    if rnd.random() < 0.45:  # «Сохранить себе» — только с аккаунтом
+                        add(opened + timedelta(seconds=30), "auth_prompt", friend, source="gift")
+                        if rnd.random() < 0.7:
+                            next_user_id += 1
+                            friend["user"] = next_user_id
+                            add(opened + timedelta(minutes=1), "register", friend)
+                            add(opened + timedelta(minutes=1, seconds=10), "gift_save", friend)
+                            pool.append(friend)
+            # без аккаунта — призывы войти (плашка после скана, серия вопроса дня, запись в дневник),
+            # часть регистрируется — источник регистрации виден в «Откуда регистрации»
             if not visitor.get("user"):
                 add(ts + timedelta(minutes=1), "nudge_shown", visitor)
-                if rnd.random() < 0.3:
-                    add(ts + timedelta(minutes=1, seconds=20), "nudge_click", visitor)
-                    if rnd.random() < 0.62:
+                source, chance = rnd.choices(
+                    [("scan", 0.3), ("quiz", 0.12), ("diary", 0.08)], weights=[60, 25, 15])[0]
+                if rnd.random() < chance * 3:
+                    if source == "scan":
+                        add(ts + timedelta(minutes=1, seconds=20), "nudge_click", visitor, place="scan")
+                    else:
+                        add(ts + timedelta(minutes=1, seconds=20), "auth_prompt", visitor, source=source)
+                    if rnd.random() < {"scan": 0.6, "quiz": 0.45, "diary": 0.7}[source]:
                         next_user_id += 1
                         visitor["user"] = next_user_id
                         add(ts + timedelta(minutes=2), "register", visitor)
+                        if source == "diary":
+                            add(ts + timedelta(minutes=2, seconds=20), "diary", visitor, kind="tasted",
+                                rating=rnd.choice([3, 4, 5]))
+            if visitor.get("user") and rnd.random() < 0.05:
+                add(ts + timedelta(minutes=8), "prize", visitor, count=1)
+            if offset <= 3 and visitor.get("user") and rnd.random() < 0.15:
+                add(ts + timedelta(minutes=9), "year_open", visitor)
             if rnd.random() < 0.22:
                 add(ts + timedelta(minutes=5), "map_open", visitor)
                 if rnd.random() < 0.7:

@@ -4,13 +4,24 @@
 # построит индекс и поднимет сервис. Дальше достаточно:
 #   docker compose up -d            # всё на :8080 через шлюз
 #
-# Сервисы:
-#   gateway  — nginx, единственный порт наружу (:8080), раздаёт запросы сервисам
-#   api      — распознавание (SigLIP 2 + Qwen3-VL на GPU), веб-сканер /app/
-#   users    — аккаунт, история сканов, оценки, достижения, регионы карты (без GPU)
+# Каждый сервис отвечает за одно, и упавший сервис не тянет за собой остальные:
+#   gateway   — nginx, единственный порт наружу (:8080): только маршрутизация
+#   web       — nginx со статикой: страница сканера /app/ и фото бутылок
+#   api       — распознавание и каталог: поиск, решение «найдено / нет», карточки, сомелье (без GPU)
+#   embedder  — модель SigLIP 2: фото → вектор (GPU)
+#   vllm      — модель Qwen3-VL-4B-FP8: выбор вина и проверка (GPU)
+#   qdrant    — векторный индекс и каталог вин
+#   catalog   — синхронизация каталога с vino-svoe.ru по кнопке и расписанию (без GPU)
+#   users     — аккаунт, история сканов, оценки, достижения, регионы карты (без GPU)
 #   analytics — события веб-сканера и дашборд для РСХБ (без GPU)
-#   qdrant   — векторный индекс и каталог вин
-#   postgres — данные пользователей
+#   postgres  — данные пользователей и аналитики
+#   logs      — сборщик логов: logs/<дата>/all.log и logs/<дата>/services/<сервис>.log
+#
+# Что видит пользователь, если сервис упал:
+#   embedder, qdrant  — «распознавание временно недоступно», остальное работает
+#   vllm              — сканер отвечает по одной картинке: «выберите своё вино из похожих»
+#   api               — то же «недоступно» для сканера и карточек; кабинет, карта, достижения работают
+#   users, analytics  — недоступны только их разделы
 #
 # Разовые шаги (профиль init, сами не стартуют):
 #   docker compose run --rm scraper            # каталог с vino-svoe.ru → data/catalog
@@ -20,7 +31,7 @@
 # подключается томами: образы содержат только код и зависимости.
 name: wines
 
-# GPU для API и индексатора (нужен NVIDIA Container Toolkit на хосте)
+# GPU для моделей и индексатора (нужен NVIDIA Container Toolkit на хосте)
 x-gpu: &gpu
   deploy:
     resources:
@@ -30,7 +41,136 @@ x-gpu: &gpu
             count: 1
             capabilities: [gpu]
 
+# Местное время в логах: часовой пояс хоста
+x-localtime: &localtime /etc/localtime:/etc/localtime:ro
+
 services:
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    # Шлюз ни от кого не зависит: имена сервисов он спрашивает у DNS Docker на
+    # каждый запрос, а за упавший сервис отвечает понятным JSON (503)
+    ports:
+      - "${WINE_API_PORT:-8080}:8080"
+    volumes:
+      - ./infra/gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - *localtime
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/gateway-health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./services/web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Страница — из репозитория: правка вёрстки видна сразу, без пересборки
+      - ./services/web/app:/srv/app:ro
+      # Фото бутылок каталога; синхронизация добавляет новые — видны сразу
+      - ./data/catalog/images:/srv/catalog-images:ro
+      - *localtime
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: services/search-api/Dockerfile
+    image: wines-api
+    restart: unless-stopped
+    # Ни от кого не зависит при старте: каталог грузится из Qdrant в фоне,
+    # модели вызываются по запросу — пока их нет, сканер отвечает 503 или по картинке
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Адреса во внутренней сети и прослушивание всех интерфейсов — задаёт compose, .env их не перекрывает
+      WINE_QDRANT_URL: http://qdrant:6333
+      WINE_EMBEDDER_URL: http://embedder:8091
+      WINE_VLLM_URL: http://vllm:8000
+      # каталог так, как его видит vLLM: эталоны уходят путями, а не base64
+      WINE_VLLM_MEDIA_DIR: /app/data/catalog
+      WINE_API_HOST: 0.0.0.0
+      WINE_API_PORT: "8080"
+    # Наружу — через шлюз; напрямую только с localhost, для отладки
+    ports:
+      - "127.0.0.1:${WINE_API_DIRECT_PORT:-8090}:8080"
+    volumes:
+      # каталог — на запись: сервис кладёт сюда кэш уменьшенных эталонов для VLM
+      - ./data/catalog:/app/data/catalog
+      - ./data/feedback:/app/data/feedback
+      - *localtime
+
+  embedder:
+    build:
+      context: .
+      dockerfile: services/embedder/Dockerfile
+    image: wines-embedder
+    <<: *gpu
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WINE_EMBEDDER_HOST: 0.0.0.0
+      WINE_EMBEDDER_PORT: "8091"
+      # SigLIP — ~1,7 ГБ; лимит ниже общего 14 ГБ, остальное — vLLM
+      WINE_VRAM_LIMIT_GB: ${WINE_EMBEDDER_VRAM_LIMIT_GB:-2.5}
+    volumes:
+      - ./models:/app/models:ro
+      - *localtime
+
+  # VLM: выбор вина среди топ-5 и попарная проверка. Логи доступа выключены —
+  # каждый скан это два запроса, они видны в логе api.
+  #   WINE_VLLM_MODEL=Qwen3-VL-4B-Instruct docker compose up -d vllm  # другая модель (bf16, 0,58 карты)
+  # gpu-memory-utilization — доля от всех 24 ГБ карты, а не от нашего лимита 14 ГБ:
+  # 0.5 ≈ 12 ГБ (веса 4B-FP8 5,9 + профилирование картинок + CUDA graphs + кэш KV; при 0.4 на кэш
+  # оставалось 0,97 ГБ — меньше 8192 токенов, vLLM не стартовал). Вместе с embedder (~2 ГБ) — ~14 ГБ
+  vllm:
+    image: vllm/vllm-openai:v0.32.0
+    <<: *gpu
+    restart: unless-stopped
+    # тензоры между процессами vLLM идут через /dev/shm; 64 МБ по умолчанию мало
+    shm_size: 4g
+    environment:
+      HF_HUB_OFFLINE: "1"
+      VLLM_NO_USAGE_STATS: "1"
+      DO_NOT_TRACK: "1"
+    command:
+      - /models/${WINE_VLLM_MODEL:-Qwen3-VL-4B-Instruct-FP8}
+      - --served-model-name=vlm
+      - --max-model-len=8192
+      - --gpu-memory-utilization=${WINE_VLLM_GPU_UTIL:-0.5}
+      # выбор из 5: фото + 5 эталонов
+      - '--limit-mm-per-prompt={"image": 6, "video": 0}'
+      # Вероятности ответов — softmax только по меткам («0»…«5», «Да»/«Нет»):
+      # api передаёт allowed_token_ids, processed_logprobs отдаёт logprobs после этого ограничения
+      - --logprobs-mode=processed_logprobs
+      - --max-logprobs=20
+      # эталоны api отдаёт путями к кэшу уменьшенных копий (data/catalog/vlm-refs-*)
+      - --allowed-local-media-path=/app/data/catalog
+      - --disable-uvicorn-access-log
+    ports:
+      - "127.0.0.1:${WINE_VLLM_PORT:-8100}:8000"
+    volumes:
+      - ./models:/models:ro
+      # кэш torch.compile: без него каждый новый контейнер компилирует модель заново (~1 мин из ~6 мин старта)
+      - ./data/vllm-cache:/root/.cache/vllm
+      # тот же путь, что у api: api шлёт file:///app/data/catalog/vlm-refs-…
+      - ./data/catalog:/app/data/catalog:ro
+      - *localtime
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 600s
+      retries: 3
+
   qdrant:
     image: qdrant/qdrant:v1.19.1
     restart: unless-stopped
@@ -49,46 +189,77 @@ services:
       timeout: 3s
       retries: 20
 
-  api:
+  catalog:
     build:
       context: .
-      dockerfile: services/search-api/Dockerfile
-    image: wines-api
-    <<: *gpu
+      dockerfile: services/catalog-service/Dockerfile
+    image: wines-catalog
     restart: unless-stopped
-    depends_on:
-      qdrant:
-        condition: service_healthy
-    # Тонкая настройка (пороги, VRAM, флаги) — из .env, если он есть
     env_file:
       - path: .env
         required: false
     environment:
-      # Эти два значения задаёт compose: адрес Qdrant во внутренней сети и
-      # прослушивание всех интерфейсов контейнера — .env их не перекрывает
       WINE_QDRANT_URL: http://qdrant:6333
-      WINE_API_HOST: 0.0.0.0
-      WINE_API_PORT: "8080"
-    # Перекрывает HEALTHCHECK образа: загрузка двух моделей с медленного диска
-    # и при занятой чужими сервисами GPU не всегда укладывается в 300 с
-    # (17.10: ~4 мин) — `up --wait` успевал объявить API unhealthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4)"]
-      interval: 15s
-      timeout: 5s
-      start_period: 600s
-      retries: 3
-    # Наружу — через шлюз; напрямую только с localhost, для отладки
-    ports:
-      - "127.0.0.1:${WINE_API_DIRECT_PORT:-8090}:8080"
+      WINE_EMBEDDER_URL: http://embedder:8091
+      WINE_CATALOG_API_URL: http://api:8080
+      WINE_CATALOG_USERS_URL: http://users:8000
+      WINE_CATALOG_HOST: 0.0.0.0
+      WINE_CATALOG_PORT: "8002"
+      # Сайт — напрямую или через прокси (если выход в интернет только через него).
+      # Прокси на 127.0.0.1 хоста из контейнера не виден — для него есть ретранслятор egress
+      HTTP_PROXY: ${WINE_SYNC_PROXY:-}
+      HTTPS_PROXY: ${WINE_SYNC_PROXY:-}
+      NO_PROXY: qdrant,embedder,api,users,localhost,127.0.0.1
+    extra_hosts:
+      - host.docker.internal:host-gateway
     volumes:
-      - ./models:/app/models:ro
-      # каталог — на запись: сервис кладёт сюда кэш уменьшенных эталонов для VLM
+      # новые вина: строки catalog.jsonl, фото images/*.png, расписание и история sync-state.json
       - ./data/catalog:/app/data/catalog
-      - ./data/feedback:/app/data/feedback
-      # Веб-сканер — из репозитория поверх копии в образе: правка вёрстки видна
-      # сразу, без пересборки образа с torch (код на Python — по-прежнему из образа)
-      - ./services/search-api/src/search_api/web:/app/services/search-api/src/search_api/web:ro
+      - *localtime
+
+  users:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    image: wines-users
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WINE_USERS_DB_URL: postgresql+psycopg://${WINE_PG_USER:-wines}:${WINE_PG_PASSWORD:-wines}@postgres:5432/${WINE_PG_DB:-wines}
+      WINE_QDRANT_URL: http://qdrant:6333
+      WINE_USERS_HOST: 0.0.0.0
+      WINE_USERS_PORT: "8000"
+    volumes:
+      # аватары, превью сканов, значки достижений
+      - ./data/users:/app/data/users
+      - *localtime
+
+  analytics:
+    build:
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
+    image: wines-analytics
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WINE_ANALYTICS_DB_URL: postgresql+psycopg://${WINE_PG_USER:-wines}:${WINE_PG_PASSWORD:-wines}@postgres:5432/${WINE_PG_DB:-wines}
+      # кто админ — спрашивает сервис пользователей; вина для демо-данных — сервис распознавания
+      WINE_ANALYTICS_USERS_URL: http://users:8000
+      WINE_ANALYTICS_API_URL: http://api:8080
+      WINE_ANALYTICS_HOST: 0.0.0.0
+      WINE_ANALYTICS_PORT: "8001"
+    volumes:
+      - *localtime
 
   postgres:
     image: postgres:16-alpine
@@ -110,72 +281,40 @@ services:
       timeout: 3s
       retries: 20
 
-  users:
+  # Логи всех контейнеров проекта → logs/<дата>/all.log (важное) и logs/<дата>/services/<сервис>.log (всё).
+  # Читает их через Docker API — нужен сокет Docker (только чтение логов и событий)
+  logs:
     build:
       context: .
-      dockerfile: services/user-service/Dockerfile
-    image: wines-users
+      dockerfile: services/log-collector/Dockerfile
+    image: wines-logs
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-    env_file:
-      - path: .env
-        required: false
     environment:
-      WINE_USERS_DB_URL: postgresql+psycopg://${WINE_PG_USER:-wines}:${WINE_PG_PASSWORD:-wines}@postgres:5432/${WINE_PG_DB:-wines}
-      WINE_QDRANT_URL: http://qdrant:6333
-      WINE_USERS_HOST: 0.0.0.0
-      WINE_USERS_PORT: "8000"
+      WINE_LOGS_PROJECT: wines
+      WINE_LOGS_DIR: /logs
+      WINE_LOGS_KEEP_DAYS: ${WINE_LOGS_KEEP_DAYS:-30}
     volumes:
-      # аватары, превью сканов, значки достижений
-      - ./data/users:/app/data/users
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/logs
+      - *localtime
 
-  analytics:
-    build:
-      context: .
-      dockerfile: services/analytics-service/Dockerfile
-    image: wines-analytics
+  # Ретранслятор к прокси хоста (профиль proxy): если в интернет можно выйти только через
+  # прокси на 127.0.0.1:<порт>, контейнер catalog до него не дотянется. egress слушает
+  # адрес docker0 и передаёт соединения прокси. В .env:
+  #   COMPOSE_PROFILES=proxy
+  #   WINE_SYNC_PROXY=http://host.docker.internal:7115
+  #   WINE_EGRESS_TARGET=127.0.0.1:<порт прокси хоста>
+  egress:
+    image: python:3.12-slim
+    profiles: [proxy]
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - path: .env
-        required: false
+    network_mode: host
+    command: ["python", "/relay.py"]
     environment:
-      WINE_ANALYTICS_DB_URL: postgresql+psycopg://${WINE_PG_USER:-wines}:${WINE_PG_PASSWORD:-wines}@postgres:5432/${WINE_PG_DB:-wines}
-      # кто админ — спрашивает сервис пользователей; вина для демо-данных — сервис распознавания
-      WINE_ANALYTICS_USERS_URL: http://users:8000
-      WINE_ANALYTICS_API_URL: http://api:8080
-      WINE_ANALYTICS_HOST: 0.0.0.0
-      WINE_ANALYTICS_PORT: "8001"
-
-  gateway:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
-    # Шлюзу нужно, чтобы контейнеры существовали (nginx разрешает имена при
-    # старте), а не чтобы были готовы: пока API грузит модели, шлюз отвечает 502
-    depends_on:
-      api:
-        condition: service_started
-      users:
-        condition: service_started
-      analytics:
-        condition: service_started
-    ports:
-      - "${WINE_API_PORT:-8080}:8080"
+      WINE_EGRESS_LISTEN: ${WINE_EGRESS_LISTEN:-172.17.0.1:7115}
+      WINE_EGRESS_TARGET: ${WINE_EGRESS_TARGET:-127.0.0.1:3128}
     volumes:
-      - ./infra/gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    healthcheck:
-      # /health проходит через шлюз в API — запас на старт такой же, как у API
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      start_period: 600s
-      retries: 3
+      - ./infra/egress/relay.py:/relay.py:ro
 
   scraper:
     build:

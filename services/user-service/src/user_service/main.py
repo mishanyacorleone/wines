@@ -13,6 +13,7 @@ cookie сессии работает без CORS.
 import logging
 import time
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
@@ -23,17 +24,24 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
+import wine_logging
+
 from . import achievements as ach
-from . import media, zones
+from . import diary, gifts, media, quiz, rewards, taste, zones
 from .catalog import Catalog, CatalogUnavailable, QdrantCatalog
 from .config import settings
 from .db import (
     Achievement,
     AuthSession,
     Database,
+    Gift,
+    PromoIssue,
+    QuizAnswer,
     Rating,
     Scan,
     Setting,
+    TasteProfile,
+    TastingNote,
     User,
     UserAchievement,
     WineZone,
@@ -71,10 +79,13 @@ from .schemas import (
     ZoneRequest,
     ZoneUpdate,
 )
-from .security import LoginError, hash_password, new_token, parse_login, token_hash, verify_password
+from .security import LoginError, hash_password, mask_login, new_token, parse_login, token_hash, verify_password
 from .seed import AVATAR_IDS, AVATAR_PRESETS, DEFAULT_AVATAR, ensure_achievements, ensure_admin
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("users")
+auth_log = logging.getLogger("auth")
+scans_log = logging.getLogger("scans")
+admin_log = logging.getLogger("admin")
 
 # Текст «Поделиться вином» по умолчанию; админ меняет его в /app/#admin → «Поделиться».
 # Маски подставляет страница (share.js), пустые — убираются вместе с запятой
@@ -99,11 +110,6 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-            datefmt="%H:%M:%S",
-        )
         _wait_for_db(db)
         db.create_schema()
         with next(db.session()) as session:
@@ -121,6 +127,15 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+    app.add_middleware(wine_logging.RequestLogMiddleware)
+
+    def who(user: User) -> str:
+        """Пользователь в логе: номер и маска логина — без персональных данных целиком."""
+        return f"#{user.id} {mask_login(user.login)}"
+
+    def log_awards(user: User, new: list[Achievement]) -> None:
+        for a in new:
+            auth_log.info("Достижение «%s» получил пользователь %s", a.title, who(user))
 
     # ── Зависимости ──────────────────────────────────────────────────────
     def get_session():
@@ -283,6 +298,7 @@ def create_app(
             what = "почтой" if kind == "email" else "номером"
             raise HTTPException(status_code=409, detail=f"Аккаунт с этим {what} уже есть — войдите") from exc
         start_session(session, user, response)
+        auth_log.info("Регистрация: пользователь %s («%s»)", who(user), user.name)
         return MeOut(user=user_out(user), stats=stats_of(session, user.id),
                      achievements=achievements_for(session, user))
 
@@ -292,6 +308,7 @@ def create_app(
         now = time.monotonic()
         attempts = [t for t in failed_logins.get(client, []) if now - t < _FAILED_WINDOW_S]
         if len(attempts) >= _MAX_FAILED_LOGINS:
+            auth_log.warning("Вход заблокирован на время: %d неудачных попыток с адреса %s", len(attempts), client)
             raise HTTPException(status_code=429, detail="Слишком много попыток — подождите несколько минут")
         try:
             kind, value = parse_login(body.login)
@@ -301,10 +318,14 @@ def create_app(
         user = session.scalar(select(User).where(column == value))
         if user is None or not verify_password(body.password, user.password_hash):
             failed_logins[client] = [*attempts, now]
+            auth_log.warning("Неудачный вход: %s с адреса %s (%s, попытка %d)", mask_login(value), client,
+                             "нет такого аккаунта" if user is None else "неверный пароль", len(attempts) + 1)
             raise HTTPException(status_code=401, detail="Неверный логин или пароль")
         failed_logins.pop(client, None)
         start_session(session, user, response)
+        auth_log.info("Вход: пользователь %s%s", who(user), " (администратор)" if user.role == "admin" else "")
         new = ach.award(session, user.id)
+        log_awards(user, new)
         return MeOut(user=user_out(user), stats=stats_of(session, user.id),
                      achievements=achievements_for(session, user), new_achievements=new_out(new))
 
@@ -324,6 +345,7 @@ def create_app(
     @app.get("/v1/me", response_model=MeOut)
     def me(user: UserDep, session: SessionDep) -> MeOut:
         new = ach.award(session, user.id)  # подхватывает достижения, добавленные админом позже
+        log_awards(user, new)
         return MeOut(user=user_out(user), stats=stats_of(session, user.id),
                      achievements=achievements_for(session, user), new_achievements=new_out(new))
 
@@ -349,9 +371,11 @@ def create_app(
         if user.role == "admin":
             raise HTTPException(status_code=403, detail="Администратора удалить нельзя")
         photos = session.scalars(select(Scan.photo_file).where(Scan.user_id == user.id)).all()
-        for model in (Scan, Rating, UserAchievement, AuthSession):
+        for model in (Scan, Rating, UserAchievement, AuthSession, TastingNote, QuizAnswer, PromoIssue, TasteProfile):
             session.execute(model.__table__.delete().where(model.user_id == user.id))
+        session.execute(Gift.__table__.update().where(Gift.sender_id == user.id).values(sender_id=None))
         avatar = user.avatar_file
+        auth_log.info("Аккаунт удалён по просьбе пользователя %s (фото сканов: %d)", who(user), len(photos))
         session.delete(user)
         session.commit()
         for name in photos:
@@ -419,8 +443,15 @@ def create_app(
         session.add(scan)
         session.commit()
         new = ach.award(session, user.id)
+        region = _new_region(wine, stats.regions, stats.resolve)
+        scans_log.info("Скан в историю пользователя %s: %s%s%s", who(user),
+                       f"«{wine['title']}» ({slug})" if wine else "вина нет в каталоге",
+                       " (перенесён из браузера)" if scanned_at is not None else "",
+                       f", открыт регион «{region}»" if region else "")
+        log_awards(user, new)
+        prizes = [rewards.prize_out(session, p).model_dump() for p in rewards.check(session, user.id)]
         return ScanResult(scan=scan_out(scan, rating_of(session, user.id, slug)), new_achievements=new_out(new),
-                          new_region=_new_region(wine, stats.regions, stats.resolve))
+                          new_region=region, new_prizes=prizes)
 
     @app.patch("/v1/me/scans/{scan_id}", response_model=ScanResult)
     def update_scan(
@@ -439,9 +470,12 @@ def create_app(
                 select(Scan.wine).where(Scan.user_id == user.id, Scan.slug.is_not(None), Scan.id != scan.id)
             ) if (raw := (w or {}).get("region"))
         }
+        scans_log.info("Пользователь %s исправил скан #%d: теперь «%s» (%s)", who(user), scan.id,
+                       wine["title"], body.slug)
         scan.wine, scan.slug, scan.status = wine, body.slug, "match"
         session.commit()
         new = ach.award(session, user.id)
+        log_awards(user, new)
         return ScanResult(scan=scan_out(scan, rating_of(session, user.id, scan.slug)), new_achievements=new_out(new),
                           new_region=_new_region(wine, regions_before, resolve))
 
@@ -495,7 +529,10 @@ def create_app(
         else:
             rating.value = body.value
         session.commit()
+        scans_log.info("Оценка пользователя %s: %s — %s", who(user), slug,
+                       {1: "нравится", -1: "не нравится", 0: "оценка снята"}.get(body.value, body.value))
         new = ach.award(session, user.id)
+        log_awards(user, new)
         return RatingResult(slug=slug, value=body.value, new_achievements=new_out(new))
 
     # ── Винные регионы карты ─────────────────────────────────────────────
@@ -527,14 +564,16 @@ def create_app(
         return zones_out(session)
 
     @app.post("/v1/admin/map/zones", response_model=MapZonesOut, status_code=201)
-    def create_zone(body: ZoneRequest, _: AdminDep, session: SessionDep) -> MapZonesOut:
+    def create_zone(body: ZoneRequest, admin: AdminDep, session: SessionDep) -> MapZonesOut:
         """Новый винный регион карты: название и отмеченные на карте субъекты."""
-        session.add(WineZone(name=check_zone_name(session, body.name), subjects=check_subjects(body.subjects)))
+        zone = WineZone(name=check_zone_name(session, body.name), subjects=check_subjects(body.subjects))
+        session.add(zone)
         session.commit()
+        admin_log.info("Админ %s добавил регион карты «%s» (%d субъектов)", who(admin), zone.name, len(zone.subjects))
         return zones_out(session)
 
     @app.patch("/v1/admin/map/zones/{zone_id}", response_model=MapZonesOut)
-    def update_zone(zone_id: int, body: ZoneUpdate, _: AdminDep, session: SessionDep) -> MapZonesOut:
+    def update_zone(zone_id: int, body: ZoneUpdate, admin: AdminDep, session: SessionDep) -> MapZonesOut:
         zone = session.get(WineZone, zone_id)
         if zone is None:
             raise HTTPException(status_code=404, detail="Регион не найден")
@@ -543,23 +582,26 @@ def create_app(
         if body.subjects is not None:
             zone.subjects = check_subjects(body.subjects)
         session.commit()
+        admin_log.info("Админ %s изменил регион карты «%s»", who(admin), zone.name)
         return zones_out(session)
 
     @app.delete("/v1/admin/map/zones/{zone_id}", response_model=MapZonesOut)
-    def delete_zone(zone_id: int, _: AdminDep, session: SessionDep) -> MapZonesOut:
+    def delete_zone(zone_id: int, admin: AdminDep, session: SessionDep) -> MapZonesOut:
         """Удаляет регион с карты вместе с сопоставлениями — его вина снова уйдут админу."""
         zone = session.get(WineZone, zone_id)
         if zone is None:
             raise HTTPException(status_code=404, detail="Регион не найден")
+        name = zone.name
         session.execute(ZoneAlias.__table__.delete().where(ZoneAlias.zone_id == zone_id))
         session.delete(zone)
         session.commit()
+        admin_log.info("Админ %s удалил регион карты «%s»", who(admin), name)
         return zones_out(session)
 
     @app.put("/v1/admin/map/aliases", response_model=MapZonesOut)
-    def set_alias(body: AliasRequest, _: AdminDep, session: SessionDep) -> MapZonesOut:
+    def set_alias(body: AliasRequest, admin: AdminDep, session: SessionDep) -> MapZonesOut:
         """Относит region из каталога к существующему региону карты."""
-        if session.get(WineZone, body.zone_id) is None:
+        if (zone := session.get(WineZone, body.zone_id)) is None:
             raise HTTPException(status_code=404, detail="Регион не найден")
         alias = session.get(ZoneAlias, body.catalog_region.strip())
         if alias is None:
@@ -567,16 +609,19 @@ def create_app(
         else:
             alias.zone_id = body.zone_id
         session.commit()
+        admin_log.info("Админ %s отнёс регион каталога «%s» к региону карты «%s»", who(admin),
+                       body.catalog_region.strip(), zone.name)
         return zones_out(session)
 
     @app.delete("/v1/admin/map/aliases", response_model=MapZonesOut)
-    def delete_alias(_: AdminDep, session: SessionDep,
+    def delete_alias(admin: AdminDep, session: SessionDep,
                      catalog_region: str = Query(min_length=1, max_length=255)) -> MapZonesOut:
         alias = session.get(ZoneAlias, catalog_region)
         if alias is None:
             raise HTTPException(status_code=404, detail="Сопоставление не найдено")
         session.delete(alias)
         session.commit()
+        admin_log.info("Админ %s снял сопоставление региона каталога «%s»", who(admin), catalog_region)
         return zones_out(session)
 
     # ── Тексты «Поделиться» ──────────────────────────────────────────────
@@ -590,7 +635,7 @@ def create_app(
         return share_settings(session)
 
     @app.put("/v1/admin/settings/share", response_model=ShareSettings)
-    def put_share_settings(body: ShareSettings, _: AdminDep, session: SessionDep) -> ShareSettings:
+    def put_share_settings(body: ShareSettings, admin: AdminDep, session: SessionDep) -> ShareSettings:
         text = body.wine_template.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Текст не может быть пустым")
@@ -603,6 +648,8 @@ def create_app(
         else:
             row.value = text
         session.commit()
+        admin_log.info("Админ %s изменил текст «Поделиться»%s", who(admin),
+                       " (сброшен на текст по умолчанию)" if text == DEFAULT_WINE_TEMPLATE else "")
         return share_settings(session)
 
     # ── Достижения ───────────────────────────────────────────────────────
@@ -642,7 +689,7 @@ def create_app(
 
     @app.post("/v1/admin/achievements", response_model=AchievementOut, status_code=201)
     async def create_achievement(
-        _: AdminDep, session: SessionDep,
+        admin: AdminDep, session: SessionDep,
         title: Annotated[str, Form(min_length=1, max_length=80)],
         description: Annotated[str, Form(min_length=1, max_length=300)],
         rule_type: Annotated[str, Form()],
@@ -660,11 +707,13 @@ def create_app(
         )
         session.add(achievement)
         session.commit()
+        admin_log.info("Админ %s добавил достижение «%s» (%s, порог %d)", who(admin), achievement.title,
+                       rule_type, threshold)
         return achievement_out(achievement)
 
     @app.patch("/v1/admin/achievements/{achievement_id}", response_model=AchievementOut)
     async def update_achievement(
-        achievement_id: int, _: AdminDep, session: SessionDep,
+        achievement_id: int, admin: AdminDep, session: SessionDep,
         title: Annotated[str | None, Form(min_length=1, max_length=80)] = None,
         description: Annotated[str | None, Form(min_length=1, max_length=300)] = None,
         rule_type: Annotated[str | None, Form()] = None,
@@ -695,19 +744,38 @@ def create_app(
             media.delete(media_root, "achievements", achievement.image_file)
             achievement.image_file = badge
         session.commit()
+        admin_log.info("Админ %s изменил достижение «%s»%s", who(admin), achievement.title,
+                       "" if achievement.is_active else " (выключено)")
         return achievement_out(achievement)
 
     @app.delete("/v1/admin/achievements/{achievement_id}", status_code=204)
-    def delete_achievement(achievement_id: int, _: AdminDep, session: SessionDep) -> Response:
+    def delete_achievement(achievement_id: int, admin: AdminDep, session: SessionDep) -> Response:
         """Удаляет достижение вместе с выданными значками. Мягкий вариант — is_active=false."""
         achievement = session.get(Achievement, achievement_id)
         if achievement is None:
             raise HTTPException(status_code=404, detail="Достижение не найдено")
         session.execute(UserAchievement.__table__.delete().where(UserAchievement.achievement_id == achievement_id))
+        title = achievement.title
         media.delete(media_root, "achievements", achievement.image_file)
         session.delete(achievement)
         session.commit()
+        admin_log.info("Админ %s удалил достижение «%s»", who(admin), title)
         return Response(status_code=204)
+
+    # ── Вовлечение: дневник, вопрос дня, челленджи и призы, открытки, итоги года ──
+    def award_out(session: Session, user: User) -> list[AchievementOut]:
+        new = ach.award(session, user.id)
+        log_awards(user, new)
+        return new_out(new)
+
+    deps = SimpleNamespace(
+        SessionDep=SessionDep, UserDep=UserDep, AdminDep=AdminDep,
+        OptionalUserDep=Annotated[User | None, Depends(optional_user)],
+        CatalogDep=Annotated[Catalog, Depends(get_catalog)],
+        who=who, admin_log=admin_log, lookup_wine=lookup_wine, award=award_out,
+    )
+    for module in (diary, quiz, rewards, gifts, taste):
+        module.mount(app, deps)
 
     return app
 

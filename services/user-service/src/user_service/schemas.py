@@ -109,6 +109,7 @@ class ScanResult(BaseModel):
     scan: ScanOut
     new_achievements: list[AchievementOut] = Field(default_factory=list)
     new_region: str | None = Field(default=None, description="регион, впервые открытый этим сканом, — для винной карты")
+    new_prizes: list[dict] = Field(default_factory=list, description="призы челленджей, заработанные этим сканом")
 
 
 class OpenedRegion(BaseModel):

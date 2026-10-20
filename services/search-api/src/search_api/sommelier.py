@@ -409,6 +409,22 @@ class Sommelier:
             for r in sorted(regions.values(), key=lambda r: -r["wines"])
         ]
 
+    def taste_options(self) -> dict[str, list[dict[str, Any]]]:
+        """Для экрана «Мой вкус»: сорта (по числу вин, с фото сайта) и винодельни."""
+        grapes: dict[str, int] = {}
+        makers: dict[str, int] = {}
+        for wine in self._wines.values():
+            for grape in wine.get("grapes") or []:
+                grapes[grape] = grapes.get(grape, 0) + 1
+            if wine.get("manufacturer"):
+                makers[wine["manufacturer"]] = makers.get(wine["manufacturer"], 0) + 1
+        return {
+            "grapes": [{"name": g, "wines": n, "image": self.media.image_url(
+                (self.media.grapes.get(g) or {}).get("image"), 240)}
+                for g, n in sorted(grapes.items(), key=lambda x: (-x[1], x[0]))],
+            "manufacturers": [{"name": m, "wines": n} for m, n in sorted(makers.items(), key=lambda x: (-x[1], x[0]))],
+        }
+
     def for_region(self, region: str, limit: int = 8) -> list[dict[str, Any]]:
         """Вина региона: сначала с высоким народным рейтингом, не больше двух от винодельни."""
         target = _norm(region)

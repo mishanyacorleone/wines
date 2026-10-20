@@ -5,8 +5,8 @@
 #   ./infra/init.sh --reindex  # пересчитать эмбеддинги, даже если индекс уже есть
 #
 # Нужно на хосте: Docker с Compose v2, NVIDIA Container Toolkit, bash, curl, jq.
-# Время первого запуска: веса ~13 ГБ, каталог 35–40 минут (вежливый темп
-# к сайту), индекс ~4 минуты, старт сервиса ~1–2 минуты.
+# Время первого запуска: веса ~10 ГБ + образ vLLM ~23 ГБ, каталог 35–40 минут
+# (вежливый темп к сайту), индекс ~4 минуты, старт vLLM ~6 минут.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -32,16 +32,17 @@ if ! docker info 2>/dev/null | grep -qi 'runtimes:.*nvidia'; then
 fi
 
 # Папки данных создаём от имени пользователя, иначе Docker создаст их от root
-mkdir -p data/catalog data/qdrant/storage data/qdrant/snapshots data/feedback data/users
+mkdir -p data/catalog/images data/qdrant/storage data/qdrant/snapshots data/feedback data/users data/vllm-cache logs
 # .env необязателен (compose читает его, если он есть) — заводим из шаблона для тонкой настройки
 [ -f .env ] || cp .env.example .env
 
-step "1/6 Веса моделей → models/ (SigLIP 2 — 4,3 ГБ, Qwen3-VL — 8,9 ГБ)"
+step "1/6 Веса моделей → models/ (SigLIP 2 — 4,3 ГБ, Qwen3-VL-4B-FP8 — 5,7 ГБ)"
 ./infra/fetch-model.sh google/siglip2-so400m-patch16-512
 ./infra/fetch-vlm.sh
 
-step "2/6 Сборка образов"
+step "2/6 Сборка образов и образ vLLM"
 docker compose --profile init build
+docker compose pull vllm
 
 step "3/6 Каталог с vino-svoe.ru → data/catalog (докачивает только недостающее)"
 docker compose run --rm scraper
@@ -64,24 +65,22 @@ else
   echo "Индекс уже есть: $points вин. Пересчитать — ./infra/init.sh --reindex"
 fi
 
-step "5/6 Сервис (загрузка моделей и прогрев — до пары минут)"
-# Всегда пересоздаём: API читает каталог сомелье и строит кэш эталонов при
-# старте — запущенный раньше (повторный init.sh после сбоя) остался бы с
-# пустым или старым каталогом
-docker compose up -d --wait --wait-timeout 600 --force-recreate --no-deps api
-# Аккаунты (Postgres + сервис пользователей) и шлюз на :8080
-docker compose up -d --wait --wait-timeout 300 postgres users analytics gateway
+step "5/6 Сервисы (vLLM грузит модель и компилирует ядра — до ~6 минут в первый раз)"
+# Всё сразу: сервисы не ждут друг друга, а api перечитывает каталог из Qdrant сам.
+# --wait — до готовности каждого, включая vllm и embedder (модели на GPU)
+docker compose up -d --wait --wait-timeout 900
 port="${WINE_API_PORT:-8080}"
 
 step "6/6 Смоук-тесты"
-./infra/smoke.sh --url "http://127.0.0.1:$port" || fail "смоук-тесты не прошли — см. выше и docker compose logs api users gateway"
+./infra/smoke.sh --url "http://127.0.0.1:$port" || fail "смоук-тесты не прошли — см. выше и logs/$(date +%F)/all.log"
 cat <<EOF
 
 Готово.
   Сканер:            http://localhost:$port/app/   (с телефона — http://<IP машины>:$port/app/)
   Контракт оценки:   POST http://localhost:$port/v1/eval/predict  (поле image)
   Документация API:  http://localhost:$port/docs
-  Админ достижений:  WINE_ADMIN_LOGIN / WINE_ADMIN_PASSWORD из .env; пароль не задан —
+  Админка:           WINE_ADMIN_LOGIN / WINE_ADMIN_PASSWORD из .env; пароль не задан —
                      сгенерирован и напечатан в  docker compose logs users | grep -i пароль
+  Логи:              logs/<дата>/all.log — важное по всем сервисам, logs/<дата>/services/ — по каждому
 Остановить: docker compose down    Запустить снова: docker compose up -d
 EOF

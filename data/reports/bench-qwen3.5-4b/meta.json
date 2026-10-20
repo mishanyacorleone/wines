@@ -1,0 +1,13 @@
+{
+  "model": "Qwen3.5-4B",
+  "backend": "chat",
+  "photos": 100,
+  "load_s": 145.2,
+  "weights_gb": 8.55,
+  "peak_vram_gb": 8.9,
+  "median_ms": 1162,
+  "p95_ms": 2048,
+  "max_ms": 3530,
+  "verify_threshold": 0.3,
+  "dequantize": false
+}

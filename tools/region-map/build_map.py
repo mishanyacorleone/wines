@@ -5,7 +5,7 @@
       https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson
     python3 tools/region-map/build_map.py admin1.geojson
 
-Пишет в search_api/web/:
+Пишет в services/web/app/:
   russia-map.json         — все субъекты, упрощённые: общий вид страны (грузится сразу);
   russia-map-detail.json  — те же субъекты подробно: подгружается при приближении.
 
@@ -22,7 +22,7 @@ import math
 import sys
 from pathlib import Path
 
-WEB = Path(__file__).resolve().parents[2] / "services/search-api/src/search_api/web"
+WEB = Path(__file__).resolve().parents[2] / "services/web/app"
 
 # Официальные названия (ст. 65 Конституции). В Natural Earth часть названий
 # сокращена («Дагестан»), у Алтайского края — название республики, а коды Москвы

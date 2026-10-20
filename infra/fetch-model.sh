@@ -24,6 +24,8 @@ mkdir -p "$DEST"
 for file in "${FILES[@]}"; do
   url="https://huggingface.co/$MODEL/resolve/main/$file"
   target="$DEST/$file"
+  # файлы в подпапках (1_LogitScore/config.json у реранкеров) — curl папку не создаёт
+  mkdir -p "$(dirname "$target")"
 
   # Уже скачанный целиком файл пропускаем: повторный запуск init.sh не должен
   # ничего тянуть заново. Размер — из заголовков (последний Content-Length

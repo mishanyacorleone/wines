@@ -1,7 +1,7 @@
 """Сквозные тесты ручек на SQLite и каталоге-заглушке (без Postgres и Qdrant).
 
 Запуск из корня репозитория:
-    PYTHONPATH=services/user-service/src .venv/bin/python -m pytest services/user-service/tests -q
+    PYTHONPATH=libs/wine-logging/src:services/user-service/src .venv/bin/python -m pytest services/user-service/tests -q
 """
 
 from __future__ import annotations
@@ -35,6 +35,9 @@ class FakeCatalog:
 
     def regions(self) -> list[str]:
         return sorted({w["region"] for w in WINES.values()})
+
+    def wines(self) -> list[dict]:
+        return [wine_snapshot(w) for w in WINES.values()]
 
 
 @pytest.fixture()

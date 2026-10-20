@@ -63,3 +63,13 @@ def parse_login(raw: str) -> tuple[str, str]:
     else:
         raise LoginError("Введите почту или номер телефона: +7 912 345-67-89")
     return "phone", "+" + digits
+
+
+def mask_login(login: str | None) -> str:
+    """Логин для логов: «m***@gmail.com», «+7***4567» — узнаваемо, но не целиком."""
+    if not login:
+        return "—"
+    if "@" in login:
+        name, domain = login.split("@", 1)
+        return f"{name[:1]}***@{domain}"
+    return f"{login[:2]}***{login[-4:]}"

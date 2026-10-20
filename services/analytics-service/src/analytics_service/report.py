@@ -138,4 +138,129 @@ def build(session: Session, days: int, include_demo: bool, now: datetime | None 
             for k, v in ip_scans.most_common(10)
         ],
         "local_share": round(sum(1 for e in scans if is_local(e.ip)) / len(scans), 3) if scans else 0,
+        "engagement": engagement(events),
+        "feedback": feedback(events, scans),
+    }
+
+
+# Откуда пришла регистрация: последний призыв войти перед ней у того же посетителя
+SOURCE_NAMES = {
+    "scan": "Плашка после скана", "map": "Винная карта", "quiz": "Вопрос дня («Сохранить серию»)",
+    "diary": "Дневник («Сохранить запись»)", "gift": "Открытка («Сохранить себе»)", "challenge": "Челлендж",
+    "taste": "«Мой вкус» («Готово»)", "direct": "Сами, кнопкой «Войти»",
+}
+
+
+def _prompt_source(e: Event) -> str | None:
+    if e.type == "auth_prompt":
+        return (e.props or {}).get("source") or "other"
+    if e.type == "nudge_click":
+        return (e.props or {}).get("place") or "scan"
+    return None
+
+
+def engagement(events: list[Event]) -> dict:
+    """Вовлечение: вопрос дня, дневник, открытки, призы, итоги года — и какие призывы приводят регистрации."""
+    by_type: dict[str, list[Event]] = defaultdict(list)
+    for e in events:
+        by_type[e.type].append(e)
+    quiz = by_type["quiz"]
+    diary = by_type["diary"]
+    gifts_created = [e for e in by_type["share"] if (e.props or {}).get("channel") == "gift"]
+
+    prompts: dict[str, list[tuple[datetime, str]]] = defaultdict(list)
+    prompted: dict[str, set[str]] = defaultdict(set)
+    for e in events:  # события уже по времени
+        source = _prompt_source(e)
+        if source:
+            prompts[e.anon_id].append((e.ts, source))
+            prompted[source].add(e.anon_id)
+    registered: Counter = Counter()
+    for e in by_type["register"]:
+        before = [s for ts, s in prompts.get(e.anon_id, []) if ts <= e.ts]
+        registered[before[-1] if before else "direct"] += 1
+    sources = []
+    for key in [*SOURCE_NAMES, *sorted(set(prompted) - set(SOURCE_NAMES))]:
+        shown, regs = len(prompted.get(key, ())), registered.get(key, 0)
+        if shown or regs:
+            sources.append({"source": key, "name": SOURCE_NAMES.get(key, key), "prompted": shown,
+                            "registrations": regs, "conversion": round(regs / shown, 3) if shown else None})
+    sources.sort(key=lambda r: r["registrations"], reverse=True)
+
+    return {
+        "quiz": {
+            "answers": len(quiz),
+            "players": len({e.anon_id for e in quiz}),
+            "correct_share": round(sum(1 for e in quiz if (e.props or {}).get("correct")) / len(quiz), 3) if quiz else 0,
+        },
+        "diary": {
+            "tasted": sum(1 for e in diary if (e.props or {}).get("kind") != "want"),
+            "want": sum(1 for e in diary if (e.props or {}).get("kind") == "want"),
+            "writers": len({e.anon_id for e in diary}),
+        },
+        "gifts": {
+            "created": len(gifts_created),
+            "opened": len(by_type["gift_open"]),
+            "saved": len(by_type["gift_save"]),
+        },
+        "prizes": sum(int((e.props or {}).get("count") or 1) for e in by_type["prize"]),
+        "year_opens": len(by_type["year_open"]),
+        "taste": {
+            "opens": sum(1 for e in by_type["taste"] if (e.props or {}).get("action") == "open"),
+            "saves": sum(1 for e in by_type["taste"] if (e.props or {}).get("action") == "save"),
+            "matches": sum(1 for e in by_type["taste"] if (e.props or {}).get("action") == "match"),
+        },
+        "registration_sources": sources,
+    }
+
+
+def _week(ts: datetime) -> date:
+    ts = ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+    d = ts.astimezone(timezone.utc).date()
+    return d - timedelta(days=d.weekday())
+
+
+def feedback(events: list[Event], scans: list[Event]) -> dict:
+    """Оценки пользователей: точность распознавания по ответам «Это ваше вино?» (по неделям) и вкусовые оценки.
+
+    Сканер сказал «нашли» → «Да, это оно» — верно; «Нет, другое» + выбрал из похожих или «моего вина нет» — ошибка.
+    Сканер сказал «нет в каталоге» → выбрал из аналогов — вино было в каталоге, мы не нашли; «моего вина нет» — верно.
+    """
+    weeks: dict[date, Counter] = defaultdict(Counter)
+    for e in scans:
+        weeks[_week(e.ts)]["scans_" + ("match" if (e.props or {}).get("status") == "match" else "not_found")] += 1
+    for e in events:
+        if e.type != "recognition":
+            continue
+        p = e.props or {}
+        status = "match" if p.get("status") == "match" else "not_found"
+        weeks[_week(e.ts)][f"{status}_{p.get('answer')}"] += 1
+
+    def row(week: date, c: Counter) -> dict:
+        return {
+            "week": week.isoformat(),
+            "scans": c["scans_match"] + c["scans_not_found"],
+            "match": {"scans": c["scans_match"], "confirmed": c["match_confirmed"],
+                      "picked": c["match_picked_alternative"], "missing": c["match_none_match"]},
+            "not_found": {"scans": c["scans_not_found"], "picked": c["not_found_picked_alternative"],
+                          "missing": c["not_found_none_match"]},
+        }
+
+    total: Counter = sum(weeks.values(), Counter())
+    m = row(date.min, total)["match"]
+    answered = m["confirmed"] + m["picked"] + m["missing"]
+
+    stars: Counter = Counter()
+    for e in events:
+        rating = (e.props or {}).get("rating")
+        if e.type == "diary" and isinstance(rating, int) and 1 <= rating <= 5:
+            stars[rating] += 1
+    rates = Counter((e.props or {}).get("value") for e in events if e.type == "rate")
+    return {
+        "weeks": [row(w, weeks[w]) for w in sorted(weeks)],
+        "accuracy": round(m["confirmed"] / answered, 3) if answered else None,
+        "answered": answered,
+        "stars": [{"stars": n, "count": stars.get(n, 0)} for n in range(5, 0, -1)],
+        "likes": rates.get(1, 0),
+        "dislikes": rates.get(-1, 0),
     }

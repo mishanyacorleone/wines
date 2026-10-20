@@ -17,8 +17,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import zones
-from .db import Achievement, Rating, Scan, UserAchievement
+from . import rewards, zones
+from .db import Achievement, Rating, Scan, TastingNote, UserAchievement
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,8 @@ RULES: dict[str, Rule] = {
     "manufacturers": Rule("Разных виноделен", "виноделен"),
     "category": Rule("Вин категории", "вин категории", True, "Часть категории: Игристое, Розовое"),
     "ratings": Rule("Оценённых вин", "оценок"),
+    "diary": Rule("Записей в дневнике дегустации", "записей"),
+    "quiz_streak": Rule("Дней подряд в «Вопросе дня» (лучшая серия)", "дней подряд"),
 }
 
 
@@ -47,6 +49,8 @@ class UserStats:
     total_scans: int         # все сканы, вместе с «нет в каталоге» — для профиля
     wines: list[dict]        # уникальные вина из распознанных сканов, снимки карточек
     ratings: int
+    diary: int = 0           # записи «попробовал» в дневнике
+    best_streak: int = 0     # лучшая серия «Вопроса дня»
     # region вина → винный регион карты (с учётом сопоставлений админа)
     resolve: Callable[[str | None], str | None] = field(default=lambda region: None)
 
@@ -76,7 +80,10 @@ def user_stats(session: Session, user_id: int) -> UserStats:
         wines.setdefault(slug, wine or {})
     total = session.scalar(select(func.count()).select_from(Scan).where(Scan.user_id == user_id)) or 0
     ratings = session.scalar(select(func.count()).select_from(Rating).where(Rating.user_id == user_id)) or 0
+    diary = session.scalar(select(func.count()).select_from(TastingNote).where(
+        TastingNote.user_id == user_id, TastingNote.kind == "tasted")) or 0
     return UserStats(scans=len(rows), total_scans=total, wines=list(wines.values()), ratings=ratings,
+                     diary=diary, best_streak=rewards.streaks(session, user_id)[1],
                      resolve=zones.resolver(session))
 
 
@@ -103,6 +110,10 @@ def _stat(achievement: Achievement, stats: UserStats) -> int:
         return sum(1 for w in wines if value and value in _norm(w.get("category")))
     if rule == "ratings":
         return stats.ratings
+    if rule == "diary":
+        return stats.diary
+    if rule == "quiz_streak":
+        return stats.best_streak
     return 0
 
 

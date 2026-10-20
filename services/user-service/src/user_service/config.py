@@ -43,6 +43,9 @@ class UserSettings:
     admin_login: str = _env("ADMIN_LOGIN", "admin@vino-svoe.local")
     admin_password: str = _env("ADMIN_PASSWORD", "")
 
+    # День «вопроса дня», челленджей и итогов года — по местному времени (Москва без перехода на летнее)
+    utc_offset_hours: int = int(_env("USERS_UTC_OFFSET_HOURS", "3"))
+
     host: str = _env("USERS_HOST", "127.0.0.1")
     port: int = int(_env("USERS_PORT", "8000"))
 
