@@ -70,6 +70,8 @@ services:
       - ./services/web/app:/srv/app:ro
       # Фото бутылок каталога; синхронизация добавляет новые — видны сразу
       - ./data/catalog/images:/srv/catalog-images:ro
+      # Фото блюд, регионов, сортов — копии с сайта (tools/site-media/download_site_media.py)
+      - ./data/site-media:/srv/site-media:ro
       - *localtime
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
@@ -104,6 +106,8 @@ services:
       # каталог — на запись: сервис кладёт сюда кэш уменьшенных эталонов для VLM
       - ./data/catalog:/app/data/catalog
       - ./data/feedback:/app/data/feedback
+      # только проверить, есть ли локальная копия картинки сайта (раздаёт web)
+      - ./data/site-media:/app/data/site-media:ro
       - *localtime
 
   embedder:

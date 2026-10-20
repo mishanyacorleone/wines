@@ -63,6 +63,50 @@ def to_png(raw: bytes, dest: Path) -> tuple[int, int]:
     return image.width, image.height
 
 
+# Превью для страницы: PNG каталога — в среднем 265 КБ, бывает и 3,8 МБ, а на экране бутылка
+# высотой 80–405 px. Превью кладём рядом с оригиналом (images/h600/<slug>.webp): web отдаёт их
+# тем же /catalog-images/, оригинал остаётся для VLM и индекса. Размер — по высоте с запасом
+# на экран ×2: h600 — списки и ленты (до 260 px), h900 — бутылка на карточке (405 px).
+THUMB_HEIGHTS = (600, 900)
+
+
+def thumb_path(images_dir: Path, slug: str, height: int) -> Path:
+    return images_dir / f"h{height}" / f"{slug}.webp"
+
+
+def save_thumbs(png: Path) -> None:
+    """Превью одного PNG каталога; уже готовые не пересчитываются."""
+    todo = [h for h in THUMB_HEIGHTS if not thumb_path(png.parent, png.stem, h).exists()]
+    if not todo:
+        return
+    with Image.open(png) as image:
+        image.load()
+        for height in todo:
+            copy = image.copy()
+            copy.thumbnail((height, height), Image.Resampling.LANCZOS)
+            dest = thumb_path(png.parent, png.stem, height)
+            dest.parent.mkdir(exist_ok=True)
+            tmp = dest.with_suffix(".webp.part")
+            copy.save(tmp, format="WEBP", quality=82, method=5)
+            tmp.replace(dest)
+
+
+def ensure_thumbs(images_dir: Path) -> int:
+    """Достраивает недостающие превью всего каталога. Возвращает, сколько фото обработано.
+
+    Битое фото не роняет прогон: страница тогда покажет оригинал."""
+    made = 0
+    for png in sorted(images_dir.glob("*.png")):
+        if all(thumb_path(images_dir, png.stem, h).exists() for h in THUMB_HEIGHTS):
+            continue
+        try:
+            save_thumbs(png)
+            made += 1
+        except Exception as exc:  # Pillow бросает разнородные исключения
+            logger.warning("Превью %s не построено: %s", png.name, exc)
+    return made
+
+
 async def download_png(
     client: httpx.AsyncClient, relative_url: str, dest: Path, settings: Settings
 ) -> tuple[int, int]:

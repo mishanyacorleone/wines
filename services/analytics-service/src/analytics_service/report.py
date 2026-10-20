@@ -147,7 +147,7 @@ def build(session: Session, days: int, include_demo: bool, now: datetime | None 
 SOURCE_NAMES = {
     "scan": "Плашка после скана", "map": "Винная карта", "quiz": "Вопрос дня («Сохранить серию»)",
     "diary": "Дневник («Сохранить запись»)", "gift": "Открытка («Сохранить себе»)", "challenge": "Челлендж",
-    "taste": "«Мой вкус» («Готово»)", "direct": "Сами, кнопкой «Войти»",
+    "taste": "«Мой вкус» («Готово»)", "trip": "«Хочу съездить» на винодельню", "direct": "Сами, кнопкой «Войти»",
 }
 
 
@@ -209,6 +209,10 @@ def engagement(events: list[Event]) -> dict:
             "opens": sum(1 for e in by_type["taste"] if (e.props or {}).get("action") == "open"),
             "saves": sum(1 for e in by_type["taste"] if (e.props or {}).get("action") == "save"),
             "matches": sum(1 for e in by_type["taste"] if (e.props or {}).get("action") == "match"),
+        },
+        "winery": {
+            action: sum(1 for e in by_type["winery"] if (e.props or {}).get("action") == action)
+            for action in ("open", "tour", "want", "site")
         },
         "registration_sources": sources,
     }

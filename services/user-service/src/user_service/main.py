@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 import wine_logging
 
 from . import achievements as ach
-from . import diary, gifts, media, quiz, rewards, taste, zones
+from . import diary, gifts, media, quiz, rewards, taste, trips, zones
 from .catalog import Catalog, CatalogUnavailable, QdrantCatalog
 from .config import settings
 from .db import (
@@ -41,6 +41,7 @@ from .db import (
     Scan,
     Setting,
     TasteProfile,
+    TripWish,
     TastingNote,
     User,
     UserAchievement,
@@ -371,7 +372,8 @@ def create_app(
         if user.role == "admin":
             raise HTTPException(status_code=403, detail="Администратора удалить нельзя")
         photos = session.scalars(select(Scan.photo_file).where(Scan.user_id == user.id)).all()
-        for model in (Scan, Rating, UserAchievement, AuthSession, TastingNote, QuizAnswer, PromoIssue, TasteProfile):
+        for model in (Scan, Rating, UserAchievement, AuthSession, TastingNote, QuizAnswer, PromoIssue, TasteProfile,
+                      TripWish):
             session.execute(model.__table__.delete().where(model.user_id == user.id))
         session.execute(Gift.__table__.update().where(Gift.sender_id == user.id).values(sender_id=None))
         avatar = user.avatar_file
@@ -774,7 +776,7 @@ def create_app(
         CatalogDep=Annotated[Catalog, Depends(get_catalog)],
         who=who, admin_log=admin_log, lookup_wine=lookup_wine, award=award_out,
     )
-    for module in (diary, quiz, rewards, gifts, taste):
+    for module in (diary, quiz, rewards, gifts, taste, trips):
         module.mount(app, deps)
 
     return app

@@ -11,10 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="app.css?v=28">
+  <link rel="stylesheet" href="app.css?v=2e3a0cb002">
 </head>
 <body>
   <!-- Шапка как .core-header на vino-svoe.ru: плавающая «таблетка».
@@ -25,7 +22,7 @@
       <div class="core-header__wrapper">
         <div class="core-header__bar">
           <a class="ui-logo" href="https://vino-svoe.ru/" aria-label="Своё Вино — главная">
-            <img class="svoe-vino-logo" src="https://vino-svoe.ru/svg/logo/svoe-vino-logo.svg" alt="Своё Вино" width="160" height="40"
+            <img class="svoe-vino-logo" src="svoe-vino-logo.svg?v=9c472778d4" alt="Своё Вино" width="160" height="40"
                  onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-fallback',textContent:'Своё Вино'}))">
           </a>
           <nav class="core-header-nav core-header__desktop-nav" aria-label="Разделы сайта">
@@ -271,6 +268,10 @@
       <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></symbol>
       <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
       <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></symbol>
+      <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
       <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
@@ -278,15 +279,22 @@
     </defs>
   </svg>
 
-  <script src="app.js?v=13"></script>
-  <script src="map.js?v=10"></script>
-  <script src="vendor/qrcode.js"></script>
-  <script src="share.js?v=10"></script>
-  <script src="account.js?v=13"></script>
-  <script src="analytics.js?v=5"></script>
-  <script src="catalog-admin.js?v=2"></script>
-  <script src="engage.js?v=6"></script>
-  <script src="engage-admin.js?v=3"></script>
-  <script src="taste.js?v=1"></script>
+  <!-- Версии (?v=) — хэш содержимого: python tools/web-assets/stamp.py после каждой правки.
+       Файлы с версией браузер хранит год и не переспрашивает (services/web/nginx.conf) -->
+  <script id="assets" type="application/json">{
+    "qrcode": "vendor/qrcode.js?v=18ae399f81",
+    "catalog-admin": "catalog-admin.js?v=e20945fec3",
+    "engage-admin": "engage-admin.js?v=5b71fe8050",
+    "russia-map": "russia-map.json?v=76861df507",
+    "russia-map-detail": "russia-map-detail.json?v=c0068d91df"
+  }</script>
+  <script src="app.js?v=ce723b7c4a"></script>
+  <script src="map.js?v=9d7db58883"></script>
+  <script src="share.js?v=3509474975"></script>
+  <script src="account.js?v=7ea0471f22"></script>
+  <script src="analytics.js?v=f7017e0396"></script>
+  <script src="engage.js?v=2d696d038a"></script>
+  <script src="taste.js?v=ef203ee431"></script>
+  <script src="winery.js?v=134cb7cf56"></script>
 </body>
 </html>

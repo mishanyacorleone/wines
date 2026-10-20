@@ -112,7 +112,42 @@
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const icon = (name, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-  const img = (src, cls, alt = "") => (src ? `<img class="${cls}" loading="lazy" src="${esc(src)}" alt="${esc(alt)}">` : "");
+  // Фото бутылки каталога → превью WebP: PNG весит в среднем 265 КБ (до 3,8 МБ), превью — 15–30 КБ.
+  // Превью строит парсер каталога (images/h600, images/h900); пока его нет — оригинал, см. «error» ниже
+  const thumb = (src, h = 600) => {
+    const m = /^\/catalog-images\/([^/?]+)\.png$/.exec(src || "");
+    return m ? `/catalog-images/h${h}/${m[1]}.webp` : src;
+  };
+  const srcAttr = (src, h = 600) => {
+    const small = thumb(src, h);
+    return `src="${esc(small)}"${small !== src ? ` data-full="${esc(src)}"` : ""}`;
+  };
+  const img = (src, cls, alt = "", h = 600) => (src ? `<img class="${cls}" loading="lazy" ${srcAttr(src, h)} alt="${esc(alt)}">` : "");
+  // Файлы, нужные не сразу (QR для «Поделиться», разделы админки, контуры карты), — по требованию.
+  // Адреса с версиями — в index.html (#assets), их проставляет tools/web-assets/stamp.py
+  const ASSETS = (() => { try { return JSON.parse(document.getElementById("assets").textContent); } catch (_) { return {}; } })();
+  const asset = (name, fallback) => ASSETS[name] || fallback;
+  const scripts = new Map();
+  const loadScript = (name) => {
+    if (!scripts.has(name)) {
+      scripts.set(name, new Promise((resolve, reject) => {
+        const el = document.createElement("script");
+        el.src = asset(name, `${name}.js`);
+        el.onload = resolve;
+        el.onerror = () => { scripts.delete(name); el.remove(); reject(new Error(`не загрузился ${name}`)); };
+        document.body.append(el);
+      }));
+    }
+    return scripts.get(name);
+  };
+  // Превью ещё не построено (вино только что добавила синхронизация) — показываем оригинал
+  document.addEventListener("error", (e) => {
+    const el = e.target;
+    if (el.tagName !== "IMG" || !el.dataset.full) return;
+    const full = el.dataset.full;
+    delete el.dataset.full;
+    el.src = full;
+  }, true);
 
   const fmtRating = (r, digits = 2) => (r ? Number(r).toFixed(digits) : "");
   const fmtAlcohol = (a) => (a == null ? "—" : `${String(a).replace(".", ",").replace(/,0$/, "")}%`);
@@ -389,7 +424,7 @@
         </div>
 
         <div class="bottle hero__bottle">
-          ${w.image_url ? `<img src="${esc(w.image_url)}" alt="Вино ${esc(w.category || "")} ${esc(w.title)}">` : `<div class="bottle__empty">${icon("wine")}</div>`}
+          ${w.image_url ? `<img ${srcAttr(w.image_url, 900)} fetchpriority="high" alt="Вино ${esc(w.category || "")} ${esc(w.title)}">` : `<div class="bottle__empty">${icon("wine")}</div>`}
         </div>
 
         <div class="hero__stage">
@@ -785,7 +820,7 @@
   }
 
   // Общие функции страницы — для кабинета (account.js), он подключается следом
-  window.Wine = { DEMO, $, esc, icon, img, show, toast, openSheet, closeSheet, closeMenu, openWine, request,
+  window.Wine = { DEMO, $, esc, icon, img, thumb, srcAttr, asset, loadScript, show, toast, openSheet, closeSheet, closeMenu, openWine, request,
     current: () => state.current };
 
   // Демо: сразу показать экран результата, без выбора файла

@@ -89,6 +89,11 @@ class ApiSettings:
     # Ресайз-API картинок сайта: фото бутылок (если нет локального PNG),
     # блюд, регионов и сортов (search_api/site_media.json)
     site_image_api: str = _env("SITE_IMAGE_API", "https://api.vino-svoe.ru/v1/img/str-api")
+    # Локальные копии этих картинок (tools/site-media/download_site_media.py) — есть копия,
+    # страница берёт её с сервиса web (/site-media/) и не зависит от сайта
+    site_media_dir: Path = field(
+        default_factory=lambda: Path(_env("SITE_MEDIA_DIR", str(REPO_ROOT / "data" / "site-media")))
+    )
 
 
 api_settings = ApiSettings()

@@ -34,16 +34,27 @@
   }
 
   async function ensure({ fresh = false } = {}) {
-    if (!data.geo) data.geo = await getJson("russia-map.json");
-    if (!data.regions || fresh) data.regions = await getJson("/v1/regions");
-    if (!data.zonesLoaded || fresh) {
-      const out = await getJson("/v1/map/zones");
-      data.zones = out.zones;
-      data.aliases = out.aliases;
-      data.zonesLoaded = true;
-    }
+    // Четыре запроса разом, а не по очереди: на мобильной сети каждый — это ещё одно ожидание ответа
+    const [geo, regions, zones, wineries] = await Promise.all([
+      data.geo || getJson(W.asset("russia-map", "russia-map.json")),
+      data.regions && !fresh ? data.regions : getJson("/v1/regions"),
+      data.zonesLoaded && !fresh ? null : getJson("/v1/map/zones"),
+      // метки виноделен — необязательны: старый api без /v1/wineries просто без них
+      data.wineries || getJson("/v1/wineries").catch(() => []),
+    ]);
+    Object.assign(data, { geo, regions, wineries });
+    if (zones) Object.assign(data, { zones: zones.zones, aliases: zones.aliases, zonesLoaded: true });
     derive();
     return data;
+  }
+
+  // Фото региона в карточке 64 px — копия 240 px, а не 800 (8–14 КБ вместо 130–145)
+  const small = (src) => src.replace(/^\/site-media\/800\//, "/site-media/240/");
+
+  // Винодельни региона карты: регион винодельни на сайте — как region вина в каталоге
+  function zoneWineries(zone) {
+    const names = new Set((zone.catalog || []).map((r) => norm(r.name)).concat(norm(zone.name)));
+    return (data.wineries || []).filter((w) => names.has(norm(w.region)));
   }
 
   async function loadProgress() {
@@ -168,9 +179,13 @@
       const wine = mode === "pick" ? picked?.has(s.id) : zoneState(zoneName) !== "plain";
       return `<text class="wmap__label ${wine ? "wmap__label--wine" : ""}" data-id="${s.id}" x="${s.label[0]}" y="${s.label[1]}">${esc(s.short)}</text>`;
     }).join("");
+    // Винодельни — метки поверх регионов; с турами — золотые (туда можно приехать)
+    const pins = mode !== "view" ? "" : (data.wineries || []).filter((w) => w.point).map((w) =>
+      `<circle class="wmap__pin${w.tours ? " wmap__pin--tour" : ""}" data-winery="${esc(w.slug)}" cx="${w.point[0]}" cy="${w.point[1]}" r="1"
+        tabindex="0" role="button" aria-label="Винодельня ${esc(w.name)}"/>`).join("");
     return `
       <svg class="wmap wmap--${mode}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" ${mode === "mini" ? 'aria-hidden="true"' : 'role="img" aria-label="Карта России"'}>
-        <g class="wmap__subjects">${paths}</g><g class="wmap__labels">${labels}</g>
+        <g class="wmap__subjects">${paths}</g><g class="wmap__labels">${labels}</g>${pins ? `<g class="wmap__pins">${pins}</g>` : ""}
       </svg>`;
   }
 
@@ -238,6 +253,11 @@
       const pxPerUnit = width / this.vb.w;
       const font = 12 / pxPerUnit;
       this.svg.style.setProperty("--label-size", `${font}px`);
+      // метки виноделен — постоянного экранного размера, видны при приближении к винным регионам
+      this.svg.classList.toggle("wmap--pins", this.zoom() >= 2.2);
+      for (const pin of this.svg.querySelectorAll(".wmap__pin")) {
+        pin.setAttribute("r", ((pin.classList.contains("wmap__pin--tour") ? 6 : 4.5) / pxPerUnit).toFixed(3));
+      }
       for (const text of this.svg.querySelectorAll(".wmap__label")) {
         const s = subjectsById().get(text.dataset.id);
         const room = Math.sqrt(s.area) * pxPerUnit;               // «ширина» субъекта на экране
@@ -250,7 +270,7 @@
     async loadDetail() {
       data.detailLoading = true;
       try {
-        data.detail = (await getJson("russia-map-detail.json")).subjects;
+        data.detail = (await getJson(W.asset("russia-map-detail", "russia-map-detail.json"))).subjects;
         for (const path of this.svg.querySelectorAll(".wmap__subject")) {
           const d = data.detail[path.dataset.id];
           if (d) path.setAttribute("d", d);
@@ -342,10 +362,14 @@
       // Клик — только если карту не тащили
       svg.addEventListener("click", (e) => {
         if (this.moved > 4) return;
+        const pin = e.target.closest(".wmap__pin");
+        if (pin) { this.tip.hidden = true; window.WineWinery?.open(pin.dataset.winery); return; }
         const path = e.target.closest(".wmap__subject") || this.downPath;
         if (path) this.activate(path, e);
       });
       svg.addEventListener("keydown", (e) => {
+        const pin = e.target.closest?.(".wmap__pin");
+        if (pin && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); window.WineWinery?.open(pin.dataset.winery); return; }
         const path = e.target.closest?.(".wmap__subject");
         if (path && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); this.activate(path); }
       });
@@ -370,6 +394,15 @@
     }
 
     hover(e) {
+      const pin = e.target.closest?.(".wmap__pin");
+      if (pin && e.pointerType !== "touch") {
+        const w = data.wineries.find((x) => x.slug === pin.dataset.winery);
+        if (w) {
+          this.tip.innerHTML = `<b>${esc(w.name)}</b><span>${w.tours ? `${icon("route")}${w.tours} ${plural(w.tours, "тур", "тура", "туров")} · ` : ""}${w.wines} ${plural(w.wines, "вино", "вина", "вин")} в каталоге</span>`;
+          this.placeTip(e.clientX, e.clientY);
+          return;
+        }
+      }
       const path = e.target.closest?.(".wmap__subject");
       if (!path || e.pointerType === "touch") { this.tip.hidden = true; return; }
       this.showTip(path, e.clientX, e.clientY);
@@ -389,6 +422,10 @@
           + (st === "opened" ? `<span class="wmap-tip__ok">${icon("check")}открыт вами</span>` : st === "closed" ? `<span>ещё не открыт</span>` : "");
       }
       this.tip.innerHTML = html;
+      this.placeTip(clientX, clientY);
+    }
+
+    placeTip(clientX, clientY) {
       this.tip.hidden = false;
       const wrap = this.root.querySelector(".wmap-wrap").getBoundingClientRect();
       const x = Math.min(clientX - wrap.left + 14, wrap.width - this.tip.offsetWidth - 8);
@@ -490,6 +527,7 @@
             ${data.progress
               ? `<li><i class="map-legend__dot map-legend__dot--opened"></i>открыт</li><li><i class="map-legend__dot map-legend__dot--closed"></i>ещё нет</li>`
               : `<li><i class="map-legend__dot map-legend__dot--neutral"></i>винный регион</li>`}
+            ${data.wineries?.length ? `<li><i class="map-legend__pin map-legend__pin--tour"></i>винодельня с турами</li><li><i class="map-legend__pin"></i>винодельня</li>` : ""}
           </ul>
         </div>
         <div id="map-view"></div>
@@ -511,7 +549,7 @@
     const opened = data.progress?.get(z.name);
     return `
       <button class="region-card region-card--${state}" type="button" data-action="map-zone" data-zone="${esc(z.name)}">
-        <span class="region-card__img">${z.image ? img(z.image, "", "") : icon("pin")}</span>
+        <span class="region-card__img">${z.image ? img(small(z.image), "", "") : icon("pin")}</span>
         <span class="region-card__text">
           <span class="region-card__name">${esc(z.name)}</span>
           <span class="region-card__meta">${z.wines} ${plural(z.wines, "вино", "вина", "вин")} · ${z.manufacturers} ${plural(z.manufacturers, "винодельня", "винодельни", "виноделен")}</span>
@@ -544,7 +582,8 @@
       ${state === "closed" ? `<p class="region-cta">${icon("camera")}Отсканируйте вино из этого региона — он откроется на карте</p>` : ""}
       ${opened?.wines.length ? `<h3 class="region-sub">Вы попробовали</h3>${opened.wines.map(wineRowHtml).join("")}` : ""}
       <h3 class="region-sub">${state === "opened" ? "Попробуйте ещё" : "Что попробовать"}</h3>
-      <div id="region-wines"><div class="skeleton"></div></div>`);
+      <div id="region-wines"><div class="skeleton"></div></div>
+      ${regionWineriesHtml(z)}`);
     $("#sheet").classList.add("region-sheet");
     try {
       const tried = new Set((opened?.wines || []).map((w) => w.slug));
@@ -556,6 +595,23 @@
     } catch (_) {
       if ($("#region-wines")) $("#region-wines").innerHTML = `<p class="muted">Не удалось загрузить вина региона</p>`;
     }
+  }
+
+  // Куда съездить: сначала винодельни с турами, потом с большим числом вин каталога
+  function regionWineriesHtml(z) {
+    if (!window.WineWinery) return "";
+    const list = zoneWineries(z).sort((a, b) => (b.tours - a.tours) || (b.wines - a.wines));
+    if (!list.length) return "";
+    const withTours = list.filter((w) => w.tours).length;
+    return `
+      <h3 class="region-sub">Винодельни${withTours ? ` · с турами ${withTours}` : ""}</h3>
+      ${list.slice(0, 6).map((w) => `
+        <button class="alt-row" type="button" data-action="winery-open" data-slug="${esc(w.slug)}">
+          <span class="alt-row__img">${w.image || w.logo ? img(w.image || w.logo, "", "") : icon("grape")}</span>
+          <span><span class="alt-row__title">${esc(w.name)}</span>
+            <span class="alt-row__meta">${w.tours ? `${w.tours} ${plural(w.tours, "тур", "тура", "туров")} · ` : ""}${w.wines} ${plural(w.wines, "вино", "вина", "вин")} в каталоге</span></span>
+          ${icon("chevron")}
+        </button>`).join("")}`;
   }
 
   function wineRowHtml(w) {
@@ -597,23 +653,26 @@
       <p class="achv-pop__desc">Открыто ${openedCount()} из ${wineZones().length} винных регионов России</p>`;
   }
 
-  // Для «Поделиться картой»: SVG с цветами в атрибутах (CSS страницы в картинку не попадает)
-  // pad — поле вокруг винного юга: картинке «Поделиться» хватает 0,06, фону итогов года нужно больше
+  // SVG с цветами в атрибутах (CSS страницы в картинку не попадает): full — вся Россия
+  // для «Поделиться картой», svg — винный юг для фона итогов года (pad — поле вокруг)
   async function shareData({ pad = 0.06 } = {}) {
     await ensure();
     await loadProgress();
     if (!data.progress) return null;
     const fill = { plain: "#EAE0CB", neutral: "#C27B80", closed: "#D9BC86", opened: "#8F3D42" };
-    const vb = fitBox(wineWestBox(), { pad });
-    const w = 1000, h = Math.round(w * vb.h / vb.w);
-    const paths = data.geo.subjects.map((s) => {
-      const state = zoneState(derived.subjectZone.get(s.id));
-      return `<path d="${data.detail?.[s.id] || s.d}" fill="${fill[state]}" stroke="#FFFFFF" stroke-width="${(0.9 * vb.w / w).toFixed(2)}"/>`;
-    }).join("");
+    const svgOf = (vb, stroke) => {
+      const w = 1000, h = Math.round(w * vb.h / vb.w);
+      const paths = data.geo.subjects.map((s) => {
+        const state = zoneState(derived.subjectZone.get(s.id));
+        return `<path d="${data.detail?.[s.id] || s.d}" fill="${fill[state]}" stroke="#FFFFFF" stroke-width="${(stroke * vb.w / w).toFixed(2)}"/>`;
+      }).join("");
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}">${paths}</svg>`;
+    };
+    const south = fitBox(wineWestBox(), { pad });
     const names = wineZones().filter((z) => zoneState(z.name) === "opened").map((z) => z.name);
     return {
       opened: names.length, total: wineZones().length, names,
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}">${paths}</svg>`,
+      svg: svgOf(south, 0.9), full: svgOf(base(), 0.5),
     };
   }
 
@@ -828,7 +887,22 @@
     if (e.detail.screen === "map") open({ push: false });
   });
 
-  window.WineMap = { open, ensure, previewHtml, popHtml, mountAdmin, shareData };
+  // «На карте» с экрана винодельни: открыть карту и приблизить к её метке
+  async function focusWinery(slug) {
+    await open();
+    const w = (data.wineries || []).find((x) => x.slug === slug);
+    if (!view || !w?.point) return;
+    const [x, y] = w.point;
+    view.animateTo(view.fit([x - 6, y - 6, x + 6, y + 6], { pad: 0.6, minW: 60 }));
+    const pin = $(`#map-view .wmap__pin[data-winery="${CSS.escape(slug)}"]`);
+    if (pin) {
+      pin.parentNode.appendChild(pin); // поверх соседних меток
+      pin.classList.add("wmap__pin--focus");
+    }
+    $("#map-view")?.scrollIntoView({ block: "center" });
+  }
+
+  window.WineMap = { open, ensure, previewHtml, popHtml, mountAdmin, shareData, focusWinery };
 
   mountHomeEntry();
   if (location.hash === "#map") open({ push: false });

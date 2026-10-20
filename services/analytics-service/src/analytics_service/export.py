@@ -55,6 +55,7 @@ EVENT_NAMES = {
     "gift_open": "открыл открытку", "gift_save": "сохранил подарок", "prize": "получил приз", "year_open": "итоги года",
     "auth_prompt": "предложили войти",
     "recognition": "ответ «Это ваше вино?»", "rate": "👍/👎 в истории", "taste": "«Мой вкус»",
+    "winery": "винодельня",
 }
 # Как на дашборде (web/app/analytics.js, NAMES)
 SHARE_NAMES = {"native": "Меню «Поделиться»", "tg": "Telegram", "vk": "ВКонтакте", "save": "Сохранили картинку",
@@ -113,6 +114,9 @@ def _engagement(ws: Worksheet, g: dict) -> None:
         ("«Мой вкус»: открывали", g["taste"]["opens"], "#,##0"),
         ("«Мой вкус»: сохранили", g["taste"]["saves"], "#,##0"),
         ("Подсказок «понравится ли» показано", g["taste"]["matches"], "#,##0"),
+        ("Винодельни: открывали страницу", g["winery"]["open"], "#,##0"),
+        ("Винодельни: переходов к записи на тур", g["winery"]["tour"], "#,##0"),
+        ("Винодельни: «Хочу съездить»", g["winery"]["want"], "#,##0"),
     ]
     for row, (label, value, fmt) in enumerate(rows, start=2):
         ws.cell(row, 1, label)

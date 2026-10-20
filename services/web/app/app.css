@@ -4,6 +4,20 @@
    .wine-detail-info, .wine-mobile-hero-block__card, .wine-dish-item,
    .wine-item_s, .core-header__mob-search-btn. */
 
+/* Playfair Display — локальная копия Google Fonts (кириллица и латиница): страница
+   и картинки «Поделиться» не зависят от доступа к fonts.googleapis.com */
+@font-face {
+  font-family: "Playfair Display"; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(fonts/playfair-cyrillic.woff2?v=c108681cba) format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Playfair Display"; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(fonts/playfair-latin.woff2?v=e0c764a8e9) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --ink: #2C2A28;          /* основной текст */
   --ink-2: #423F3C;
@@ -745,6 +759,13 @@ select.field__input { appearance: none; padding-right: 40px; cursor: pointer;
 .wmap__label--on { display: block; }
 .wmap__label--wine { fill: #FFFFFF; stroke: rgba(80, 30, 25, .55); }
 .wmap--view .wmap__subject--closed + .wmap__label { fill: var(--ink); }
+/* Винодельни (winery.js): видны при приближении к винным регионам, с турами — золотые */
+.wmap__pin { display: none; fill: #FFFFFF; stroke: var(--wine); stroke-width: 1.5px; vector-effect: non-scaling-stroke; cursor: pointer; outline: none; }
+.wmap--pins .wmap__pin { display: inline; }
+.wmap__pin--tour { fill: #F2C36B; stroke: #6A2D22; }
+.wmap__pin:hover, .wmap__pin:focus-visible { fill: var(--wine); stroke: #FFFFFF; }
+.wmap__pin--focus { fill: var(--wine); stroke: #FFFFFF; stroke-width: 2.5px; animation: pin-pulse 1s ease-in-out 3 alternate; }
+@keyframes pin-pulse { from { opacity: 1; } to { opacity: .45; } }
 
 .wmap-ctrl { position: absolute; right: 10px; top: 10px; display: grid; gap: 4px; }
 .wmap-ctrl__btn, .wmap-preset {
@@ -815,12 +836,14 @@ select.field__input { appearance: none; padding-right: 40px; cursor: pointer;
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .seg__btn--on { background: var(--white); color: var(--wine); box-shadow: var(--shadow-elevated); }
-.map-legend { display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
-.map-legend li { display: flex; align-items: center; gap: 6px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+.map-legend li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .map-legend__dot { width: 12px; height: 12px; border-radius: 4px; }
 .map-legend__dot--opened { background: var(--wine); }
 .map-legend__dot--closed { background: #D9BC86; }
 .map-legend__dot--neutral { background: #C27B80; }
+.map-legend__pin { width: 11px; height: 11px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid var(--wine); }
+.map-legend__pin--tour { background: #F2C36B; border-color: #6A2D22; }
 
 .region-list { display: grid; gap: 8px; }
 @media (min-width: 768px) { .region-list { grid-template-columns: 1fr 1fr; } }
@@ -1408,4 +1431,126 @@ select.field__input { appearance: none; padding-right: 40px; cursor: pointer;
   .taste-colors { grid-template-columns: repeat(3, 1fr); }
   .taste-color:last-child { grid-column: auto; min-height: 150px; }
   .taste-grapes { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── «От бутылки — на винодельню» (winery.js) ──────────────────────────────── */
+.winery-card { display: grid; grid-template-columns: 1fr; width: 100%; padding: 0; border: 0; border-radius: 24px; overflow: hidden;
+  background: var(--cream); text-align: left; cursor: pointer; color: var(--ink); }
+.winery-card__photo { display: grid; place-items: center; aspect-ratio: 16 / 9; background: var(--gold); color: var(--wine); overflow: hidden; }
+.winery-card__photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+.winery-card:hover .winery-card__photo img { transform: scale(1.03); }
+.winery-card__photo .i { width: 48px; height: 48px; }
+.winery-card__body { display: flex; flex-direction: column; gap: 6px; padding: 16px 20px 20px; }
+.winery-card__kicker { display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; color: var(--muted); }
+.winery-card__kicker .i { width: 16px; height: 16px; color: var(--wine); }
+.winery-card__name { font: 500 26px/32px var(--serif); }
+.winery-card__lead { font-size: 15px; line-height: 22px; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.winery-card__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.winery-card__chips > span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--white);
+  font-size: 14px; line-height: 20px; color: var(--wine); font-weight: 500; }
+.winery-card__chips .i { width: 16px; height: 16px; }
+.winery-tour-row { display: grid; grid-template-columns: 64px 1fr 20px; align-items: center; gap: 14px; width: 100%; margin-top: 12px;
+  padding: 10px 16px 10px 10px; border: 1px solid var(--gold); border-radius: 18px; background: var(--white); text-align: left; cursor: pointer; color: var(--ink); }
+.winery-tour-row__img { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 12px; overflow: hidden; background: var(--gold); color: var(--wine); }
+.winery-tour-row__img img { width: 100%; height: 100%; object-fit: cover; }
+.winery-tour-row > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.winery-tour-row__kicker { font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--wine); font-weight: 600; }
+.winery-tour-row__title { font-size: 16px; line-height: 22px; font-weight: 500; }
+.winery-tour-row__meta { font-size: 14px; line-height: 20px; color: var(--muted); }
+.winery-tour-row > .i, .winery-sec__more .i { width: 20px; height: 20px; color: var(--wine); }
+.winery-sec__more { display: inline-flex; align-items: center; gap: 4px; }
+
+.winery { position: fixed; inset: 0; z-index: 45; background: var(--paper); animation: fade .2s ease; }
+.winery__scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.winery__wait { height: 320px; margin: 0; border-radius: 0; }
+.winery__error { padding: 96px 24px; text-align: center; }
+.winery__close { position: absolute; z-index: 2; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: rgba(254, 253, 250, .92); color: var(--ink); box-shadow: var(--shadow-elevated); cursor: pointer; }
+.winery__hero { position: relative; height: min(56vh, 480px); background: var(--ink); overflow: hidden; }
+.winery__gallery { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.winery__gallery::-webkit-scrollbar { display: none; }
+.winery__gallery img { flex: none; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: start; }
+.winery__hero::after { content: ""; position: absolute; inset: 40% 0 0; background: linear-gradient(to bottom, transparent, rgba(30, 14, 16, .78)); pointer-events: none; }
+.winery__head { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; max-width: 1000px; margin: 0 auto;
+  padding: 0 var(--gutter) 28px; color: var(--white); pointer-events: none; }
+.winery__logo { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 12px; padding: 6px; border-radius: 14px; background: var(--white); }
+.winery__logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.winery__kicker { font-size: 15px; line-height: 22px; opacity: .9; }
+.winery__name { margin-top: 2px; font: 500 40px/46px var(--serif); text-shadow: 0 2px 16px rgba(0, 0, 0, .25); }
+.winery__dots { position: absolute; z-index: 1; top: max(28px, calc(env(safe-area-inset-top) + 16px)); left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; pointer-events: none; }
+.winery__dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .5); transition: .2s; }
+.winery__dots i.on { width: 18px; border-radius: 3px; background: var(--white); }
+.winery__body { max-width: 1000px; margin: 0 auto; padding: 24px var(--gutter) max(48px, env(safe-area-inset-bottom)); }
+.winery__facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.winery__facts > span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: var(--cream);
+  font-size: 14px; line-height: 20px; color: var(--ink); }
+.winery__facts .i { width: 16px; height: 16px; color: var(--wine); }
+.winery__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.winery__actions .i { width: 18px; height: 18px; }
+.winery__want--on { color: var(--wine); }
+.winery__lead { margin-top: 24px; font-size: 18px; line-height: 27px; color: var(--ink); }
+.winery__sec { margin-top: 40px; }
+.winery__title { margin-top: 0; display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; font: 500 26px/32px var(--serif); color: var(--ink); }
+.winery__title span { font: 400 15px/20px var(--sans); color: var(--muted); }
+.winery__note { margin-bottom: 16px; font-size: 16px; line-height: 24px; color: var(--muted); }
+.winery__list { display: grid; gap: 10px; }
+.winery__text p { margin-bottom: 12px; font-size: 16px; line-height: 25px; color: var(--ink); }
+.winery__text--clamp { max-height: 200px; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent); mask-image: linear-gradient(to bottom, #000 60%, transparent); }
+.winery__text + .link-btn { margin-top: 0; }
+.winery__tours { display: grid; gap: 16px; }
+.tour-card { border-radius: 24px; overflow: hidden; background: var(--cream); }
+.tour-card__img { position: relative; aspect-ratio: 16 / 9; background: var(--gold); }
+.tour-card__img img { width: 100%; height: 100%; object-fit: cover; }
+.tour-card__kind { position: absolute; left: 12px; top: 12px; padding: 6px 12px; border-radius: 999px; background: rgba(254, 253, 250, .94);
+  font-size: 13px; line-height: 18px; font-weight: 600; color: var(--wine); }
+.tour-card__body { padding: 16px 20px 20px; }
+.tour-card__title { margin: 0; font: 500 22px/28px var(--serif); color: var(--ink); }
+.tour-card__short { margin: 6px 0 0; font-size: 15px; line-height: 22px; color: var(--ink); }
+.tour-card__meta { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.tour-card__meta li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; font-size: 15px; line-height: 21px; color: var(--ink); }
+.tour-card__meta .i { width: 18px; height: 18px; margin-top: 1px; color: var(--wine); }
+.tour-card__btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 18px; }
+.tour-card__btns .link-btn { margin-top: 0; }
+.tour-card__btns .i { width: 16px; height: 16px; }
+.winery__people { display: grid; gap: 12px; }
+.winery-person { display: grid; grid-template-columns: 56px 1fr; gap: 14px; align-items: center; }
+.winery-person__img { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; overflow: hidden; background: var(--cream); color: var(--wine); }
+.winery-person__img img { width: 100%; height: 100%; object-fit: cover; }
+.winery-person b { display: block; font-weight: 600; font-size: 16px; line-height: 22px; color: var(--ink); }
+.winery-person span span { font-size: 14px; line-height: 20px; color: var(--muted); }
+.winery__wines { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
+.winery-wine { flex: none; width: 132px; display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 0; border-radius: 18px; background: var(--cream);
+  text-align: left; cursor: pointer; scroll-snap-align: start; color: var(--ink); }
+.winery-wine__img { display: grid; place-items: center; height: 150px; margin-bottom: 6px; color: var(--wine); }
+.winery-wine__img img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.winery-wine__title { font-size: 15px; line-height: 20px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.winery-wine__meta { font-size: 13px; line-height: 18px; color: var(--muted); }
+.winery__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.winery-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--white);
+  font-size: 15px; line-height: 20px; color: var(--ink); cursor: pointer; }
+.winery-chip span { display: inline-flex; align-items: center; gap: 3px; color: var(--wine); font-weight: 600; font-size: 13px; }
+.winery-chip .i { width: 14px; height: 14px; }
+.winery__site { margin-top: 40px; }
+.winery__site .i { width: 18px; height: 18px; }
+
+.trips { margin-top: 24px; }
+.trips__title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font: 500 22px/28px var(--serif); color: var(--ink); }
+.trips__title .i { width: 22px; height: 22px; color: var(--wine); }
+.trips__title span { font: 400 15px/20px var(--sans); color: var(--muted); }
+.trips__list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.trip-card { flex: none; width: 160px; display: flex; flex-direction: column; padding: 0 0 12px; border: 0; border-radius: 18px; overflow: hidden;
+  background: var(--cream); text-align: left; cursor: pointer; color: var(--ink); }
+.trip-card__img { display: grid; place-items: center; height: 100px; margin-bottom: 10px; background: var(--gold); color: var(--wine); overflow: hidden; }
+.trip-card__img img { width: 100%; height: 100%; object-fit: cover; }
+.trip-card__name { padding: 0 12px; font-size: 15px; line-height: 20px; font-weight: 600; }
+.trip-card__region { padding: 0 12px; font-size: 13px; line-height: 18px; color: var(--muted); }
+
+@media (min-width: 768px) {
+  .winery-card { grid-template-columns: minmax(0, 1.1fr) 1fr; }
+  .winery-card__photo { aspect-ratio: auto; min-height: 240px; }
+  .winery-card__body { justify-content: center; padding: 24px 28px; }
+  .winery__tours { grid-template-columns: 1fr 1fr; }
+  .winery__people { grid-template-columns: 1fr 1fr; }
+  .winery__name { font-size: 52px; line-height: 58px; }
 }

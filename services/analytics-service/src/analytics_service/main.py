@@ -43,6 +43,7 @@ EventType = Literal[
     "recognition",  # props.answer — confirmed | picked_alternative | none_match; props.status — ответ сканера
     "rate",  # props.value — 1 | -1 | 0 (снял оценку)
     "taste",  # «Мой вкус» (A9): props.action — open | save | match (+ percent)
+    "winery",  # «От бутылки — на винодельню» (A11): props.action — open | tour | want | site, props.slug
 ]
 
 

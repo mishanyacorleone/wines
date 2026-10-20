@@ -17,7 +17,7 @@ import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from qdrant_client import QdrantClient
 
 import wine_logging
@@ -43,10 +43,13 @@ from .schemas import (
     Timings,
     WineCard,
     WineSummary,
+    WineryInfo,
+    WineryPin,
 )
 from .search import SearchResult, WineSearcher
 from .sommelier import SiteMedia, Sommelier, dish_icon
 from .verdict import Thresholds, Verdict, decide
+from .wineries import Wineries
 from .vlm import PromptBuilder, VlmClient
 
 logger = logging.getLogger("api")
@@ -73,7 +76,8 @@ async def lifespan(app: FastAPI):
     )
     vlm = _build_vlm()
     store = CatalogStore(
-        client, api_settings.collection, SiteMedia.load(image_api=api_settings.site_image_api),
+        client, api_settings.collection,
+        SiteMedia.load(image_api=api_settings.site_image_api, local_dir=api_settings.site_media_dir),
         on_loaded=_warm_references(vlm),
     )
     _state.update(client=client, embedder=embedder, vlm=vlm, catalog=store, searcher=WineSearcher(
@@ -175,6 +179,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(wine_logging.RequestLogMiddleware)
+
+# Справочники меняются только с синхронизацией каталога (раз в день): браузер 5 минут берёт их
+# из кэша и не переспрашивает при каждом открытии страницы
+_CACHED_GET = ("/v1/pairing/dishes", "/v1/regions", "/v1/wineries", "/v1/taste/options")
+
+
+@app.middleware("http")
+async def _cache_reference(request: Request, call_next):
+    response = await call_next(request)
+    if request.method == "GET" and response.status_code == 200 and request.url.path.startswith(_CACHED_GET):
+        response.headers.setdefault("Cache-Control", "public, max-age=300")
+    return response
 
 _THRESHOLDS = Thresholds(
     min_verify_prob=api_settings.accept_min_verify_prob,
@@ -441,6 +457,25 @@ def taste_options() -> TasteOptions:
     return TasteOptions(**_sommelier().taste_options())
 
 
+@app.get("/v1/wineries", response_model=list[WineryPin])
+def wineries() -> list[WineryPin]:
+    """Винодельни с точкой на винной карте (туры, число вин каталога) — для меток."""
+    counts = _sommelier().maker_counts()
+    return [WineryPin(**pin, wines=counts.get(pin["slug"], 0)) for pin in _wineries().pins()]
+
+
+@app.get("/v1/wineries/{slug}", response_model=WineryInfo)
+def winery(slug: str, limit: int = Query(default=12, ge=1, le=50)) -> WineryInfo:
+    """Страница винодельни: о ней, терруар, люди, туры, вина из каталога, соседи."""
+    info = _wineries().full(slug)
+    if info is None:
+        raise HTTPException(status_code=404, detail="Винодельня не найдена")
+    wines = _sommelier().for_maker(slug)
+    counts = _sommelier().maker_counts()
+    pins = {key: [{**n, "wines": counts.get(n["slug"], 0)} for n in info.pop(key)] for key in ("nearby", "region_tours")}
+    return WineryInfo(**info, **pins, wines=[_wine_summary(w) for w in wines[:limit]], wines_total=len(wines))
+
+
 @app.post("/v1/feedback", response_model=FeedbackResponse)
 def feedback(body: FeedbackRequest) -> FeedbackResponse:
     """«Да, это оно» / «выбрал другое» / «моего вина нет».
@@ -511,7 +546,8 @@ def _image_url(payload: dict) -> str | None:
         # фото отдаёт сервис web (/catalog-images/ — папка data/catalog/images)
         return "/catalog-images/" + image_path.removeprefix("images/")
     sommelier = _store().sommelier
-    media = sommelier.media if sommelier else SiteMedia(image_api=api_settings.site_image_api)
+    media = sommelier.media if sommelier else SiteMedia(
+        image_api=api_settings.site_image_api, local_dir=api_settings.site_media_dir)
     return media.image_url(payload.get("image_url"), 1160)
 
 
@@ -536,5 +572,13 @@ def _wine_card(payload: dict) -> WineCard:
             **sommelier.card_media(payload),
             "sommelier": sommelier.advise(payload),
             "similar": similar,
+            "winery": _wineries().brief(payload.get("manufacturer_slug")),
         }
     )
+
+
+def _wineries() -> Wineries:
+    if "wineries" not in _state:
+        _state["wineries"] = Wineries.load(
+            SiteMedia(image_api=api_settings.site_image_api, local_dir=api_settings.site_media_dir))
+    return _state["wineries"]

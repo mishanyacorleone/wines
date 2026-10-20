@@ -315,6 +315,8 @@ ClickHouse без смены формата. Город по адресу — п
 | `GET /v1/admin/analytics` → `engagement` | вовлечение: вопрос дня, дневник, открытки, призы, итоги года; `registration_sources` — какой призыв войти (`auth_prompt` с `source`, `nudge_click`) был последним перед регистрацией и его конверсия |
 | `GET/PUT /v1/me/taste`, `GET /v1/me/taste/match?slug=` (users) | «Мой вкус» и «понравится ли это вино»: профиль (цвет, сладость, сорта, винодельни) + оценки похожих вин (★ дневника, 👍/👎) → процент, вердикт, причины, «вы уже пили» |
 | `GET /v1/taste/options` (api) | сорта каталога по числу вин с фото сайта и винодельни — для экрана «Мой вкус» |
+| `GET /v1/wineries`, `GET /v1/wineries/{slug}` (api) | «От бутылки — на винодельню»: метки виноделен для карты (точка, туры, вин в каталоге); страница — о винодельне, терруар, люди, туры, вина каталога, соседи, туры региона. Снимок сайта — `search_api/wineries.json` (`tools/site-media/fetch_wineries.py`); у карточки вина — поле `winery` (связь по `manufacturer_slug`) |
+| `GET /v1/me/trips`, `PUT/DELETE /v1/me/trips/{winery}` (users) | «Хочу съездить»: список виноделен человека (только с аккаунтом) |
 | `GET /v1/admin/analytics` → `feedback` | точность распознавания по ответам «Это ваше вино?» (`recognition`: confirmed / picked_alternative / none_match) по неделям; ★ дневника и 👍/👎 истории (`rate`); в Excel — листы «Точность распознавания» и «Оценки» |
 | `GET /v1/admin/analytics/export.xlsx?days=&demo=` | тот же отчёт в Excel: сводка, по дням (с графиком), воронка, топы, шары, сети, события периода (до 50 000) |
 | `POST/DELETE /v1/admin/analytics/demo` | сгенерировать / удалить демо-данные |

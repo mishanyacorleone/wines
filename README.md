@@ -224,6 +224,7 @@ tools/eval-runner/          прогон фото через API → HTML-отч
 tools/web-demo/             демо-ответы API для вёрстки без GPU
 tools/site-media/           фото блюд, регионов и сортов с сайта для карточки
 tools/region-map/           контуры субъектов РФ для винной карты (Natural Earth → services/web/app/russia-map*.json)
+tools/web-assets/           stamp.py — версии файлов страницы (?v=) по их содержимому
 infra/                      init.sh (первый запуск), smoke.sh (смоук-тесты), загрузка весов,
                             run-qdrant.sh (Qdrant без Docker), egress/ (ретранслятор к прокси хоста)
 docker-compose.yml          все сервисы; scraper, indexer — профиль init; egress — профиль proxy
@@ -314,6 +315,13 @@ WINE_VLLM_MEDIA_DIR=/app/data/catalog PYTHONPATH=libs/wine-logging/src:services/
 
 Страницу сканера без Docker отдаёт любой статический сервер из `services/web/app`,
 но API должен быть на том же адресе — проще смотреть её через Docker-шлюз.
+
+**После правки вёрстки** — `python tools/web-assets/stamp.py`: он ставит в `index.html` и `app.css`
+версии файлов по их содержимому (`app.js?v=3f9c1a2b7e`). Файлы с версией браузер хранит год и не
+переспрашивает (`services/web/nginx.conf`), так что без новой версии пользователи остались бы
+со старым скриптом; смоук проверяет, что версии совпадают. Фото бутылок страница берёт из превью
+WebP (`data/catalog/images/h600`, `h900` — 15–30 КБ вместо PNG до 3,8 МБ); их строит парсер
+каталога в конце каждого прогона, и `init.sh`, и синхронизация. Нет превью — показывается PNG.
 Мобильный сканер — `http://<хост>:8080/app/` (корень `/` перенаправляет туда).
 Кнопка «Сфотографировать этикетку»:
 
@@ -515,7 +523,8 @@ docker compose подставляет `.env` из корня во все сер�
 | `WINE_ACCEPT_MIN_IMAGE_SCORE` | `0.76` | без VLM: балл картинки ниже — «нет в каталоге» |
 | `WINE_ACCEPT_MIN_MARGIN` | `0.02` | без VLM: минимальный отрыв топ-1 от топ-2 |
 | `WINE_FEEDBACK_DIR` | `./data/feedback` | куда писать отклики пользователей |
-| `WINE_SITE_IMAGE_API` | ресайз-API vino-svoe.ru | фото бутылки, если нет локального PNG каталога |
+| `WINE_SITE_IMAGE_API` | ресайз-API vino-svoe.ru | фото бутылки, если нет локального PNG каталога; фото блюд, регионов, сортов без локальной копии |
+| `WINE_SITE_MEDIA_DIR` | `data/site-media` | локальные копии фото блюд, регионов, сортов (`tools/site-media/download_site_media.py`, в git) — раздаёт `web` как `/site-media/` |
 | `WINE_ADMIN_LOGIN` / `WINE_ADMIN_PASSWORD` | `admin@vino-svoe.local` / — | администратор достижений; пароль из окружения применяется при каждом старте, без него генерируется один раз и пишется в лог |
 | `WINE_PG_USER` / `WINE_PG_PASSWORD` / `WINE_PG_DB` | `wines` / `wines` / `wines` | PostgreSQL в compose |
 | `WINE_USERS_DB_URL` | задаёт compose | строка подключения сервиса пользователей (SQLAlchemy) |

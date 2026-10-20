@@ -287,6 +287,20 @@ class TasteProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
 
+class TripWish(Base):
+    """«Хочу съездить»: винодельня, куда человек собирается. Снимок названия и фото — сервис
+    пользователей не знает справочник виноделен (он у api)."""
+
+    __tablename__ = "trip_wishes"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    winery: Mapped[str] = mapped_column(String(255), primary_key=True)  # slug винодельни на сайте
+    name: Mapped[str] = mapped_column(String(255))
+    region: Mapped[str | None] = mapped_column(String(120))
+    image: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
 class Gift(Base):
     """Подарочная открытка: ссылка на вино с пожеланием. Открыть может любой, у кого есть ссылка."""
 

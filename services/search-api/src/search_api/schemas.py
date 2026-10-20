@@ -158,6 +158,86 @@ class SommelierAdvice(BaseModel):
     pairings: list[Pairing]
 
 
+class TourInfo(BaseModel):
+    """Винный тур с сайта (vino-svoe.ru/tours)."""
+
+    slug: str
+    title: str
+    short: str | None = None
+    about: str | None = None
+    kind: str | None = Field(default=None, description="«Экскурсия с дегустацией»")
+    duration: str | None = None
+    price: float | None = Field(default=None, description="₽ с человека")
+    group: list[int | None] = Field(default_factory=list, description="[мин, макс] человек")
+    individual: bool = False
+    schedule: list[dict[str, str]] = Field(default_factory=list, description="[{day: «сб», from: «11:00»}]")
+    address: str | None = None
+    image: str | None = None
+    link: str | None = Field(default=None, description="запись — на сайте винодельни")
+    url: str = Field(description="страница тура на vino-svoe.ru")
+
+
+class WineryBrief(BaseModel):
+    """Винодельня на карточке вина: «От бутылки — на винодельню»."""
+
+    slug: str
+    name: str
+    region: str | None = None
+    place: str | None = Field(default=None, description="«с. Долинное, Бахчисарайский район»")
+    image: str | None = None
+    lead: str | None = None
+    terrain: str | None = None
+    climate: str | None = None
+    tours: int = 0
+    price_from: float | None = None
+    tour: TourInfo | None = Field(default=None, description="первый тур — для превью")
+    has_point: bool = False
+
+
+class WineryPin(BaseModel):
+    slug: str
+    name: str
+    region: str | None = None
+    point: list[float] | None = Field(default=None, description="координаты винной карты (russia-map.json)")
+    tours: int = 0
+    logo: str | None = None
+    image: str | None = None
+    wines: int = Field(default=0, description="вин в каталоге")
+
+
+class WineryPerson(BaseModel):
+    name: str
+    role: str | None = None
+    image: str | None = None
+
+
+class WineryInfo(BaseModel):
+    slug: str
+    name: str
+    url: str = Field(description="страница винодельни на vino-svoe.ru")
+    region: str | None = None
+    address: str | None = None
+    place: str | None = None
+    point: list[float] | None = None
+    description: str | None = None
+    about: str | None = None
+    history: str | None = None
+    terroir: str | None = None
+    terrain: str | None = None
+    climate: str | None = None
+    square: float | None = Field(default=None, description="виноградники, га")
+    site: str | None = None
+    logo: str | None = None
+    gallery: list[str] = Field(default_factory=list)
+    people: list[WineryPerson] = Field(default_factory=list)
+    people_about: str | None = None
+    tours: list[TourInfo] = Field(default_factory=list)
+    nearby: list[WineryPin] = Field(default_factory=list)
+    region_tours: list[WineryPin] = Field(default_factory=list, description="винодельни региона с турами")
+    wines: list[WineSummary] = Field(default_factory=list, description="вина каталога, лучшие первыми")
+    wines_total: int = 0
+
+
 class WineCard(WineSummary):
     """Полная карточка найденного вина с рекомендациями."""
 
@@ -170,6 +250,7 @@ class WineCard(WineSummary):
     background_image: str | None = Field(default=None, description="фото виноградника для карточки")
     sommelier: SommelierAdvice
     similar: list[WineSummary] = Field(default_factory=list, description="похожие вина")
+    winery: WineryBrief | None = Field(default=None, description="винодельня и туры к ней")
 
 
 class ScanResponse(BaseModel):

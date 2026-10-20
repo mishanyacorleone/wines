@@ -11,7 +11,7 @@ from tqdm.asyncio import tqdm_asyncio
 
 from .config import Settings
 from .http_client import FetchError, build_client, fetch
-from .images import ImageError, download_png
+from .images import ImageError, download_png, ensure_thumbs
 from .models import Failure, Wine
 from .nuxt import NuxtParseError, parse_wine
 from .sitemap import load_wine_urls
@@ -127,4 +127,8 @@ async def scrape_catalog(
                 *(worker(url) for url in pending), desc="Каталог vino-svoe.ru", disable=not progress
             )
 
+    # Превью для страницы — новым винам и собранным до появления превью (готовые пропускаются)
+    made = await asyncio.to_thread(ensure_thumbs, settings.images_dir)
+    if made:
+        logger.info("Превью бутылок построено: %d", made)
     return stats

@@ -32,7 +32,7 @@ if ! docker info 2>/dev/null | grep -qi 'runtimes:.*nvidia'; then
 fi
 
 # Папки данных создаём от имени пользователя, иначе Docker создаст их от root
-mkdir -p data/catalog/images data/qdrant/storage data/qdrant/snapshots data/feedback data/users data/vllm-cache logs
+mkdir -p data/catalog/images data/qdrant/storage data/qdrant/snapshots data/feedback data/users data/vllm-cache data/site-media logs
 # .env необязателен (compose читает его, если он есть) — заводим из шаблона для тонкой настройки
 [ -f .env ] || cp .env.example .env
 

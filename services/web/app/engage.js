@@ -14,7 +14,7 @@
 
   const W = window.Wine;
   if (!W || W.DEMO) return;
-  const { $, esc, icon, img, toast, openSheet, closeSheet, openWine } = W;
+  const { $, esc, icon, img, srcAttr, toast, openSheet, closeSheet, openWine } = W;
   const ACC = () => window.WineAccount;
   const track = (type, props = {}) => document.dispatchEvent(new CustomEvent("wine:track", { detail: { type, props } }));
   // Предложение войти — с источником: дашборд считает, какой призыв приводит регистрации
@@ -461,13 +461,13 @@
     const dish = (best?.sommelier?.pairings || []).find((p) => p.image);
     const covers = (y.covers || []).slice(-5);
     const wines = (n) => plural(n, "вино", "вина", "вин");
-    const bottle = (src, cls = "") => (src ? `<img class="${cls}" src="${esc(src)}" alt="">` : "");
+    const bottle = (src, cls = "") => (src ? `<img class="${cls}" ${srcAttr(src, 900)} alt="">` : "");
     const slides = [
       `<div class="ys ys--intro ys--photo">
         ${photo(homeland)}
         <p class="ys__kicker">Ваш винный</p>
         <p class="ys__year">${y.year}</p>
-        ${covers.length ? `<div class="ys__fan">${covers.map((u, i) => `<img src="${esc(u)}" alt="" style="--i:${i - (covers.length - 1) / 2}">`).join("")}</div>` : ""}
+        ${covers.length ? `<div class="ys__fan">${covers.map((u, i) => `<img ${srcAttr(u)} alt="" style="--i:${i - (covers.length - 1) / 2}">`).join("")}</div>` : ""}
         <p class="ys__big">${y.wines}<span> ${wines(y.wines)}</span></p>
         <p class="ys__small">${y.scans} ${plural(y.scans, "скан", "скана", "сканов")}${y.first_wine
           ? ` · первое вино года — «${esc(y.first_wine.title)}»` : ""}</p>
@@ -490,7 +490,7 @@
         ${y.top_manufacturer ? `<p class="ys__small">Винодельня года — ${esc(y.top_manufacturer)}</p>` : ""}
       </div>` : "",
       y.best_wine || y.likes ? `<div class="ys ys--best">
-        ${y.best_wine?.image_url ? `<img class="ys__blur" src="${esc(y.best_wine.image_url)}" alt="">` : ""}
+        ${y.best_wine?.image_url ? `<img class="ys__blur" ${srcAttr(y.best_wine.image_url)} alt="">` : ""}
         <p class="ys__kicker">${y.best_wine ? "Лучшее вино года" : "Понравилось"}</p>
         ${y.best_wine ? `<div class="ys__stage">
             <span class="ys__beam" aria-hidden="true"></span>
@@ -526,7 +526,7 @@
         <p class="ys__headline">Это был ваш<br>винный ${y.year}</p>
         <div class="ys__poster">
           <p class="ys__poster-kicker">Мой винный ${y.year}</p>
-          ${covers.length ? `<div class="ys__poster-bottles">${covers.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</div>` : ""}
+          ${covers.length ? `<div class="ys__poster-bottles">${covers.map((u) => `<img ${srcAttr(u)} alt="">`).join("")}</div>` : ""}
           <div class="ys__poster-grid">
             <span><b>${y.wines}</b>${wines(y.wines)}</span>
             <span><b>${y.regions}${y.regions_total ? `/${y.regions_total}` : ""}</b>регионов</span>
@@ -559,8 +559,10 @@
     stepYear(0);
   }
 
-  // Фото сайта отдаётся ресайзом по адресу …/str-api/88/88/… — для фона просим крупнее
-  const big = (url, size = 800) => (url ? url.replace(/\/str-api\/\d+\/\d+\//, `/str-api/${size}/${size}/`) : null);
+  // Для фона — крупная версия картинки сайта: локальная копия /site-media/800/,
+  // а без копии — ресайз-API сайта (…/str-api/88/88/… → нужный размер)
+  const big = (url, size = 800) => (url ? url.replace(/^\/site-media\/\d+\//, "/site-media/800/")
+    .replace(/\/str-api\/\d+\/\d+\//, `/str-api/${size}/${size}/`) : null);
   const photo = (url) => (url ? `<img class="ys__photo" src="${esc(url)}" alt="" onerror="this.remove()">` : "");
 
   // Карта для ночного фона: открытые регионы — золотом, остальные едва видны
@@ -614,7 +616,7 @@
       case "quiz-save": askRegister("quiz", saveQuizAfterAuth); break;
       case "quiz-wine": openWine(el.dataset.slug); break;
       case "quiz-zoom":
-        openSheet("Рассмотрите этикетку", `<div class="quiz-zoom">${img(st.quiz.image_url, "", "Бутылка вина")}</div>`);
+        openSheet("Рассмотрите этикетку", `<div class="quiz-zoom">${img(st.quiz.image_url, "", "Бутылка вина", 900)}</div>`);
         break;
       case "eng-auth": askRegister("challenge", loadHome); break;
       case "eng-copy": copyCode(el.dataset.code); break;

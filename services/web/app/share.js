@@ -34,6 +34,7 @@
     try {
       await Promise.all([document.fonts.load(`600 64px ${SERIF}`), document.fonts.load(`500 40px ${SERIF}`)]);
     } catch (_) { /* останется Georgia */ }
+    await W.loadScript("qrcode").catch(() => {}); // нет сети — картинка без QR
     const el = document.createElement("canvas");
     el.width = SIZE.w;
     el.height = SIZE.h;
@@ -148,7 +149,8 @@
   async function drawWine(wine) {
     const { el, ctx } = await canvas();
     frame(ctx, "Найдено по фото");
-    const bottle = await loadImage(wine.image_url);
+    // превью 900 px по высоте хватает картинке 1080×1350; нет превью — оригинал
+    const bottle = (await loadImage(W.thumb(wine.image_url, 900))) || (await loadImage(wine.image_url));
     // бутылка слева, с мягкой тенью
     const bx = 96, by = 220, bw = 330, bh = 720;
     roundRect(ctx, bx, by, bw, bh, 40, "#FFFFFF");
@@ -220,24 +222,27 @@
   }
 
   // ── Винная карта ────────────────────────────────────────────────────────
+  // Вся Россия, а не только юг — чтобы попал и Дальний Восток
   async function drawMap(m) {
     const { el, ctx } = await canvas();
     frame(ctx, "Винная карта");
-    text(ctx, "Моя винная карта России", 96, 286, { font: `600 54px ${SERIF}` });
-    text(ctx, `Открыто ${m.opened} из ${m.total} ${plural(m.total, "региона", "регионов", "регионов")}`, 96, 350, { font: `500 36px ${SANS}`, color: C.wine });
-    roundRect(ctx, 96, 396, SIZE.w - 192, 560, 36, "#F4EFE4");
-    const map = await loadImage(URL.createObjectURL(new Blob([m.svg], { type: "image/svg+xml" })));
+    text(ctx, "Моя винная карта России", 96, 262, { font: `600 54px ${SERIF}` });
+    text(ctx, `Открыто ${m.opened} из ${m.total} ${plural(m.total, "региона", "регионов", "регионов")}`, 96, 318, { font: `500 36px ${SANS}`, color: C.wine });
+    let y = 380;
+    const map = await loadImage(URL.createObjectURL(new Blob([m.full || m.svg], { type: "image/svg+xml" })));
     if (map) {
-      const k = Math.min((SIZE.w - 232) / map.width, 520 / map.height);
-      ctx.drawImage(map, (SIZE.w - map.width * k) / 2, 416 + (520 - map.height * k) / 2, map.width * k, map.height * k);
+      const pad = 16, w = SIZE.w - 192, k = (w - 2 * pad) / map.width, h = map.height * k + 2 * pad;
+      roundRect(ctx, 96, 356, w, h, 36, "#F4EFE4");
+      ctx.drawImage(map, 96 + pad, 356 + pad, map.width * k, map.height * k);
+      y = 356 + h + 32;
     }
     // открытые регионы — плашками
-    let x = 96, y = 990;
+    let x = 96;
     ctx.font = `600 26px ${SANS}`;
-    for (const name of m.names.slice(0, 8)) {
+    for (const name of m.names) {
       const w = ctx.measureText(name).width + 40;
       if (x + w > SIZE.w - 96) { x = 96; y += 60; }
-      if (y > 1060) break;
+      if (y + 48 > SIZE.h - 300) break;
       roundRect(ctx, x, y, w, 48, 24, C.wine);
       text(ctx, name, x + w / 2, y + 33, { font: `600 26px ${SANS}`, color: "#FFFFFF", align: "center" });
       x += w + 12;

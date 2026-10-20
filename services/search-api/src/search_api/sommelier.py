@@ -25,26 +25,37 @@ class SiteMedia:
     """Картинки справочников сайта (tools/site-media/fetch_site_media.py).
 
     Хранятся путями `/uploads/...`; готовый URL нужного размера собирает
-    `image_url` — сайт отдаёт картинки через ресайз-API, как и фото бутылок.
+    `image_url`: локальная копия из `local_dir` (data/site-media, её раздаёт
+    сервис web как /site-media/), а если копии нет — ресайз-API сайта, как у
+    фото бутылок. Копии качает tools/site-media/download_site_media.py.
     """
 
     dishes: dict[str, str] = field(default_factory=dict)
     regions: dict[str, str] = field(default_factory=dict)
     grapes: dict[str, dict[str, str | None]] = field(default_factory=dict)
     image_api: str = "https://api.vino-svoe.ru/v1/img/str-api"
+    local_dir: Path | None = None
+
+    LOCAL_SIZES = (240, 800)  # размеры локальных копий, см. download_site_media.py
 
     @classmethod
-    def load(cls, path: Path = SITE_MEDIA_PATH, image_api: str | None = None) -> "SiteMedia":
-        if not path.exists():
-            return cls()
-        data = json.loads(path.read_text(encoding="utf-8"))
+    def load(cls, path: Path = SITE_MEDIA_PATH, image_api: str | None = None,
+             local_dir: Path | None = None) -> "SiteMedia":
         kwargs = {"image_api": image_api} if image_api else {}
-        return cls(data.get("dishes", {}), data.get("regions", {}), data.get("grapes", {}), **kwargs)
+        if not path.exists():
+            return cls(local_dir=local_dir, **kwargs)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return cls(data.get("dishes", {}), data.get("regions", {}), data.get("grapes", {}),
+                   local_dir=local_dir, **kwargs)
 
     def image_url(self, path: str | None, size: int) -> str | None:
         if not path:
             return None
         filename = path.lstrip("/").removeprefix("uploads/")
+        if self.local_dir is not None:
+            local = next((s for s in self.LOCAL_SIZES if s >= size), self.LOCAL_SIZES[-1])
+            if (self.local_dir / str(local) / filename).is_file():
+                return f"/site-media/{local}/{filename}"
         return f"{self.image_api.rstrip('/')}/{size}/{size}/resize/uploads/{filename}"
 
     def dish(self, name: str) -> str | None:
@@ -442,6 +453,20 @@ class Sommelier:
             if len(picked) == limit:
                 break
         return picked
+
+    def for_maker(self, maker_slug: str) -> list[dict[str, Any]]:
+        """Вина винодельни (manufacturer_slug = адрес её страницы на сайте), лучшие — первыми."""
+        return sorted(
+            (w for w in self._wines.values() if w.get("manufacturer_slug") == maker_slug),
+            key=lambda w: (-(w.get("public_rating") or 0), _norm(w.get("title"))),
+        )
+
+    def maker_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for wine in self._wines.values():
+            if wine.get("manufacturer_slug"):
+                counts[wine["manufacturer_slug"]] = counts.get(wine["manufacturer_slug"], 0) + 1
+        return counts
 
     def dish_names(self) -> list[tuple[str, int]]:
         """Все блюда каталога с числом вин — для экрана «подобрать к блюду»."""

@@ -228,7 +228,7 @@ fi
 read -r code ms < <(req "$URL/app/share.js")
 code_share=$code
 read -r code ms < <(req "$URL/app/vendor/qrcode.js")
-[ "$code_share" = 200 ] && [ "$code" = 200 ] && ok "«Поделиться»: share.js и QR-библиотека отдаются" \
+[ "$code_share" = 200 ] && [ "$code" = 200 ] && ok "«Поделиться»: share.js и QR-библиотека (грузится по требованию) отдаются" \
   || bad "«Поделиться»: share.js HTTP $code_share, vendor/qrcode.js HTTP $code"
 read -r code ms < <(req "$URL/v1/settings/share")
 if [ "$code" = 200 ] && jq -e '.wine_template | length > 0' "$BODY" >/dev/null 2>&1; then
@@ -255,6 +255,23 @@ esac
 read -r code ms < <(req "$URL/app/")
 if [ "$code" = 200 ] && grep -qi '<html' "$BODY"; then ok "/app/: страница сканера отдаётся"
 else bad "/app/: HTTP $code"; fi
+
+# Скорость страницы: файлы с версией кэшируются на год — версия обязана совпадать с содержимым
+if python3 tools/web-assets/stamp.py --check >"$TMP/stamp" 2>&1; then
+  ok "/app/: версии файлов (?v=) совпадают с содержимым"
+else
+  bad "/app/: версии устарели, браузеры возьмут старые файлы — python tools/web-assets/stamp.py ($(head -1 "$TMP/stamp"))"
+fi
+app_js=$(grep -oE 'app\.js\?v=[a-z0-9]+' services/web/app/index.html | head -1)
+read -r code ms < <(req -D "$TMP/headers" "$URL/app/$app_js")
+[ "$code" = 200 ] && grep -qi '^cache-control:.*immutable' "$TMP/headers" \
+  && ok "/app/$app_js: кэш на год (immutable)" || bad "/app/$app_js: HTTP $code, нет Cache-Control immutable"
+if [ -n "$sample" ]; then
+  thumb="h600/$(basename "$sample" .png).webp"
+  read -r code ms < <(req "$URL/catalog-images/$thumb")
+  [ "$code" = 200 ] && ok "превью бутылки /catalog-images/$thumb: $(stat -c %s "$BODY") байт" \
+    || bad "превью бутылки /catalog-images/$thumb: HTTP $code — превью строит парсер каталога (docker compose run --rm scraper)"
+fi
 
 section "Каталог (синхронизация с сайтом)"
 read -r code ms < <(req "$URL/v1/admin/catalog/sync")
@@ -323,6 +340,20 @@ else
       read -r code ms < <(req -b "$JAR" "$URL/v1/me/taste/match?slug=$scan_slug")
       [ "$code" = 200 ] && ok "«понравится ли»: $(jq -r '.state' "$BODY")" \
         || bad "/v1/me/taste/match: HTTP $code $(head -c 200 "$BODY")"
+    fi
+    # «От бутылки — на винодельню» (A11): винодельни и туры — api, «Хочу съездить» — users
+    read -r code ms < <(req "$URL/v1/wineries")
+    if [ "$code" = 200 ] && jq -e 'length > 0' "$BODY" >/dev/null 2>&1; then
+      winery=$(jq -r '[.[] | select(.tours > 0)][0].slug // .[0].slug' "$BODY")
+      ok "винодельни на карте: $(jq length "$BODY"), с турами $(jq '[.[] | select(.tours > 0)] | length' "$BODY")"
+      read -r code ms < <(req "$URL/v1/wineries/$winery")
+      [ "$code" = 200 ] && ok "винодельня «$(jq -r '.name' "$BODY")»: туров $(jq '.tours | length' "$BODY"), вин $(jq '.wines_total' "$BODY")" \
+        || bad "/v1/wineries/$winery: HTTP $code"
+      read -r code ms < <(req -b "$JAR" -X PUT -H 'Content-Type: application/json' \
+        -d '{"name":"Смоук"}' "$URL/v1/me/trips/$winery")
+      [ "$code" = 200 ] && ok "«Хочу съездить»: сохранено" || bad "/v1/me/trips: HTTP $code $(head -c 200 "$BODY")"
+    else
+      bad "/v1/wineries: HTTP $code — нет справочника виноделен (search_api/wineries.json)"
     fi
     read -r code ms < <(req -b "$JAR" "$URL/v1/challenges")
     [ "$code" = 200 ] && ok "челленджи: идёт $(jq length "$BODY")" || bad "/v1/challenges: HTTP $code"

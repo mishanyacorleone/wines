@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -93,6 +94,12 @@ class Albers:
 PROJECT = Albers(100, 52, 64, 56)
 
 
+def project_point(lon: float, lat: float, frame: dict) -> tuple[float, float]:
+    """Географическая точка → координаты карты (frame — поле «frame» из russia-map.json)."""
+    x, y = PROJECT(lon, lat)
+    return ((x - frame["x0"]) * frame["scale"] + frame["pad"], (y - frame["y0"]) * frame["scale"] + frame["pad"])
+
+
 def simplify(points, tolerance):
     """Дуглас — Пекер, без рекурсии."""
     if len(points) < 4:
@@ -142,6 +149,26 @@ def to_path(rings, tolerance, min_area):
         if len(pts) >= 3:
             parts.append("M" + "L".join(f"{x:.1f},{y:.1f}" for x, y in pts) + "Z")
     return "".join(parts)
+
+
+def relative(path):
+    """«M382.7,452.6L378.6,432.6…Z» → «M382.7,452.6l-4.1-20…z»: сдвиги вместо координат —
+    подробный контур вдвое меньше (126 → 67 КБ после сжатия). Сдвиги считаются в целых
+    десятых, поэтому точки совпадают с абсолютными до последнего знака. Только для подробного
+    контура: по общему map.js считает рамки регионов и ждёт абсолютные координаты."""
+    num = lambda v: re.sub(r"^(-?)0\.", r"\1.", f"{v / 10:g}")  # 0.5 → .5, -0.5 → -.5
+    out = []
+    for ring in re.findall(r"M([^Z]*)Z", path):
+        pts = [tuple(round(float(v) * 10) for v in p.split(",")) for p in ring.split("L")]
+        x, y = pts[0]
+        steps = []
+        for px, py in pts[1:]:
+            dx, dy = px - x, py - y
+            x, y = px, py
+            if dx or dy:
+                steps.append(num(dx) + ("" if dy < 0 else ",") + num(dy))
+        out.append(f"M{num(pts[0][0])},{num(pts[0][1])}l" + " ".join(steps).replace(" -", "-") + "z")
+    return "".join(out)
 
 
 def inside(x, y, ring):
@@ -215,10 +242,12 @@ def main(source: Path) -> None:
             "label": label_point(rings),
             "area": round(sum(ring_area(r) for r in rings)),
         })
-        detail[code] = to_path(rings, DETAIL_TOLERANCE, 0.3)
+        detail[code] = relative(to_path(rings, DETAIL_TOLERANCE, 0.3))
 
     common = {"viewBox": f"0 0 {WIDTH} {height:.0f}",
-              "source": "Natural Earth 1:10m admin-1 (public domain), tools/region-map/build_map.py"}
+              "source": "Natural Earth 1:10m admin-1 (public domain), tools/region-map/build_map.py",
+              # точка (lon, lat) → карта: x = (PROJECT.x − x0) · scale + pad, y — так же (см. project_point)
+              "frame": {"x0": min(xs), "y0": min(ys), "scale": scale, "pad": pad}}
     (WEB / "russia-map.json").write_text(
         json.dumps({**common, "subjects": subjects}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     (WEB / "russia-map-detail.json").write_text(

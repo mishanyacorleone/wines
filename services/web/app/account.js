@@ -388,6 +388,7 @@
       </div>
 
       <div id="profile-taste"></div>
+      <div id="profile-trips"></div>
       <div id="profile-engage"></div>
 
       ${window.WineMap ? `
@@ -422,6 +423,7 @@
         ${user.role === "admin" ? "" : `<button class="link-btn profile-delete" type="button" data-action="acc-delete">Удалить аккаунт</button>`}
       </div>`;
     window.WineTaste?.mountProfile($("#profile-taste"));
+    window.WineWinery?.mountProfile($("#profile-trips"));
     window.WineEngage?.mountProfile($("#profile-engage"), $("#profile-diary"));
     window.WineMap?.previewHtml()
       .then((html) => { if ($("#profile-map")) $("#profile-map").innerHTML = html; })
@@ -694,11 +696,20 @@
               aria-selected="${acc.admin.tab === "share"}" data-action="acc-admin-tab" data-tab="share">Поделиться</button>` : ""}
       ${window.WineAnalytics ? `<button class="seg__btn ${acc.admin.tab === "analytics" ? "seg__btn--on" : ""}" type="button" role="tab"
               aria-selected="${acc.admin.tab === "analytics"}" data-action="acc-admin-tab" data-tab="analytics">Аналитика</button>` : ""}
-      ${window.WineCatalogAdmin ? `<button class="seg__btn ${acc.admin.tab === "catalog" ? "seg__btn--on" : ""}" type="button" role="tab"
-              aria-selected="${acc.admin.tab === "catalog"}" data-action="acc-admin-tab" data-tab="catalog">Каталог</button>` : ""}
-      ${window.WineEngageAdmin ? `<button class="seg__btn ${acc.admin.tab === "engage" ? "seg__btn--on" : ""}" type="button" role="tab"
-              aria-selected="${acc.admin.tab === "engage"}" data-action="acc-admin-tab" data-tab="engage">Задания и призы</button>` : ""}
+      <button class="seg__btn ${acc.admin.tab === "catalog" ? "seg__btn--on" : ""}" type="button" role="tab"
+              aria-selected="${acc.admin.tab === "catalog"}" data-action="acc-admin-tab" data-tab="catalog">Каталог</button>
+      <button class="seg__btn ${acc.admin.tab === "engage" ? "seg__btn--on" : ""}" type="button" role="tab"
+              aria-selected="${acc.admin.tab === "engage"}" data-action="acc-admin-tab" data-tab="engage">Задания и призы</button>
     </div>` : "";
+
+  // Раздел админки из отдельного файла: грузится при первом открытии вкладки (обычному
+  // пользователю он не нужен). Пока файл грузится, админ мог уйти на другую вкладку — тогда не монтируем
+  function mountLazy(name, global, id) {
+    const el = $(`#${id}`);
+    W.loadScript(name)
+      .then(() => { if (el.isConnected) window[global].mountAdmin(el); })
+      .catch(() => { if (el.isConnected) el.innerHTML = `<p class="muted">Раздел не загрузился — проверьте сеть и откройте вкладку ещё раз</p>`; });
+  }
 
   function renderAdmin() {
     if (acc.admin.tab === "analytics" && window.WineAnalytics) {
@@ -715,7 +726,7 @@
       return;
     }
     document.body.classList.remove("screen-wide");
-    if (acc.admin.tab === "engage" && window.WineEngageAdmin) {
+    if (acc.admin.tab === "engage") {
       $("#screen-admin").innerHTML = `
         <button class="back-link" type="button" data-action="acc-profile">${icon("arrow-left")}К профилю</button>
         <div class="title-block">
@@ -724,10 +735,10 @@
           ${adminTabsHtml()}
         </div>
         <div id="admin-engage"></div>`;
-      window.WineEngageAdmin.mountAdmin($("#admin-engage"));
+      mountLazy("engage-admin", "WineEngageAdmin", "admin-engage");
       return;
     }
-    if (acc.admin.tab === "catalog" && window.WineCatalogAdmin) {
+    if (acc.admin.tab === "catalog") {
       $("#screen-admin").innerHTML = `
         <button class="back-link" type="button" data-action="acc-profile">${icon("arrow-left")}К профилю</button>
         <div class="title-block">
@@ -736,7 +747,7 @@
           ${adminTabsHtml()}
         </div>
         <div id="admin-catalog"></div>`;
-      window.WineCatalogAdmin.mountAdmin($("#admin-catalog"));
+      mountLazy("catalog-admin", "WineCatalogAdmin", "admin-catalog");
       return;
     }
     if (acc.admin.tab === "share" && window.WineShare) {
